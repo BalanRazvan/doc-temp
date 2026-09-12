@@ -1,0 +1,5 @@
+# One reason per package (architecture_decisions.md §0). Pinned because pip has no lock file.
+fastapi==0.141.1         # routes and request validation
+uvicorn==0.52.4          # the server that runs the FastAPI app
+httpx==0.28.1            # calls the AI provider's HTTP API
+pyjwt[crypto]==2.14.0    # verifies Supabase's ES256 tokens; [crypto] adds the elliptic-curve math ES256 needs
