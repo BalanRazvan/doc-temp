@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "TZ=Europe/Bucharest node --test src/lib"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
