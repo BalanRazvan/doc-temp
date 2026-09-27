@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   addDays,
   addMonths,
+  attendedOn,
   computeVisitDates,
   droppedRecords,
   fixedStepVisits,
@@ -384,4 +385,55 @@ test('a window runs on across the October daylight saving change', () => {
   const patient = enrolled('Zoe', [visitOn('2026-10-24', 3)])
   assert.equal(windowsOn([patient], '2026-10-27').length, 1)
   assert.equal(windowsOn([patient], '2026-10-28').length, 0)
+})
+
+test("once a visit is attended its window days go, and the next visit's window stays", () => {
+  const zoe = enrolled('Zoe', [
+    visitOn('2026-10-07', 7, '2026-10-09'),
+    { ...visitOn('2026-10-14', 7), visitNumber: 2 },
+  ])
+  assert.deepEqual(
+    windowsOn([zoe], '2026-10-10').map((found) => found.visit.visitNumber),
+    [2],
+  )
+  assert.deepEqual(windowsOn([zoe], '2026-10-05'), [])
+})
+
+test('a deviation has no window days either', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-20')])
+  assert.deepEqual(windowsOn([patient], '2026-10-12'), [])
+  assert.deepEqual(windowsOn([patient], '2026-10-16'), [])
+})
+
+test('a visit attended on another day is listed on that day, and only there', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-16')])
+  assert.equal(attendedOn([patient], '2026-10-16').length, 1)
+  assert.deepEqual(attendedOn([patient], '2026-10-14'), [])
+  assert.deepEqual(attendedOn([patient], '2026-10-15'), [])
+})
+
+test('a visit attended on its target day is not listed again', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-14')])
+  assert.deepEqual(attendedOn([patient], '2026-10-14'), [])
+  assert.equal(visitsOn([patient], '2026-10-14').length, 1)
+})
+
+test('a deviation is listed on the day it was attended, outside its window', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-20')])
+  const found = attendedOn([patient], '2026-10-20')
+  assert.equal(found.length, 1)
+  assert.equal(visitStatus(found[0].visit), 'deviation')
+})
+
+test('a day lists every visit attended on it, in the order the patients come', () => {
+  const zoe = enrolled('Zoe', [
+    visitOn('2026-10-01', 3, '2026-10-02'),
+    { ...visitOn('2026-10-15', 3, '2026-10-14'), visitNumber: 2 },
+  ])
+  const adam = enrolled('Adam', [visitOn('2026-10-12', 3, '2026-10-14')])
+  assert.deepEqual(
+    attendedOn([zoe, adam], '2026-10-14').map((found) => [found.patient.name, found.visit.visitNumber]),
+    [['Zoe', 2], ['Adam', 1]],
+  )
+  assert.deepEqual(attendedOn([zoe, adam], '2026-10-01'), [])
 })

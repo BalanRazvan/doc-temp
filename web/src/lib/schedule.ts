@@ -140,8 +140,19 @@ export function windowsOn(patients: Patient[], dayISO: string): DayVisit[] {
   for (const patient of patients) {
     if (patient.visits.some((visit) => visit.targetDate === dayISO)) continue
     for (const visit of patient.visits) {
+      if (visit.actualDate) continue
       const { from, to } = windowDates(visit)
       if (from <= dayISO && dayISO <= to) found.push({ patient, visit })
+    }
+  }
+  return found
+}
+
+export function attendedOn(patients: Patient[], dayISO: string): DayVisit[] {
+  const found: DayVisit[] = []
+  for (const patient of patients) {
+    for (const visit of patient.visits) {
+      if (visit.actualDate === dayISO && visit.actualDate !== visit.targetDate) found.push({ patient, visit })
     }
   }
   return found
