@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SubmitEvent } from 'react'
 import {
   addProcedure,
+  appendNames,
   computeVisitDates,
   dropRemovedTicks,
   fixedStepVisits,
@@ -10,6 +11,7 @@ import {
   orderVisits,
   removeProcedure,
   renameProcedure,
+  repeatedName,
   shortDate,
   toggleTick,
   toISO,
@@ -57,9 +59,8 @@ function rowsProblem(rows: Row[]): string {
 function proceduresProblem(procedures: Procedure[]): string {
   const names = procedures.map((procedure) => procedure.name.trim())
   if (names.includes('')) return 'Every procedure needs a name, or remove its row.'
-  const lowered = names.map((name) => name.toLowerCase())
-  const repeat = lowered.findIndex((name, index) => lowered.indexOf(name) !== index)
-  if (repeat !== -1) return `Two procedures are both called "${names[repeat]}".`
+  const repeat = repeatedName(names)
+  if (repeat) return `Two procedures are both called "${repeat}".`
   return ''
 }
 
@@ -91,6 +92,10 @@ export default function Timelines() {
   const deleteTimeline = useStore((state) => state.deleteTimeline)
   const patients = useStore((state) => state.patients)
   const patientsStatus = useStore((state) => state.patientsStatus)
+  const procedureSets = useStore((state) => state.procedureSets)
+  const procedureSetsStatus = useStore((state) => state.procedureSetsStatus)
+  const loadProcedureSets = useStore((state) => state.loadProcedureSets)
+  const addProcedureSet = useStore((state) => state.addProcedureSet)
 
   const [editing, setEditing] = useState<Timeline | null>(null)
   const [name, setName] = useState('')
@@ -105,6 +110,10 @@ export default function Timelines() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
+  const [chosenSetId, setChosenSetId] = useState('')
+  const [savingSet, setSavingSet] = useState(false)
+  const [setsNote, setSetsNote] = useState('')
+  const [setsError, setSetsError] = useState('')
 
   const problem = mode === 'fixed' ? fixedProblem(count, every, windowDays) : rowsProblem(rows)
   let visits: TimelineVisit[] = []
@@ -127,6 +136,8 @@ export default function Timelines() {
     setFixedTicks({})
     setProcedures([])
     setError('')
+    setSetsNote('')
+    setSetsError('')
   }
 
   function startEdit(timeline: Timeline) {
@@ -137,6 +148,8 @@ export default function Timelines() {
     setFixedTicks({})
     setProcedures(timeline.procedures)
     setError('')
+    setSetsNote('')
+    setSetsError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -165,6 +178,39 @@ export default function Timelines() {
     } else {
       setRows(rows.map((row) => (Number(row.week) === visit.week ? { ...row, procedures: ticked } : row)))
     }
+  }
+
+  function applySet() {
+    const chosen = procedureSets.find((procedureSet) => procedureSet.id === chosenSetId)
+    if (!chosen) return
+    const applied = appendNames(procedures, chosen.procedures, () => crypto.randomUUID())
+    const added = applied.length - procedures.length
+    const skipped = chosen.procedures.length - added
+    setProcedures(applied)
+    setSetsError('')
+    setSetsNote(`Added ${added} from "${chosen.name}"${skipped > 0 ? `; ${skipped} already listed.` : '.'}`)
+  }
+
+  async function saveAsSet() {
+    setSetsNote('')
+    setSetsError('')
+    const namesProblem = proceduresProblem(procedures)
+    if (namesProblem) {
+      setSetsError(namesProblem)
+      return
+    }
+    const answer = window.prompt('Name the new procedure set', name.trim())
+    if (answer === null) return
+    if (!answer.trim()) {
+      setSetsError('The set needs a name.')
+      return
+    }
+    setSavingSet(true)
+    const names = procedures.map((procedure) => procedure.name.trim())
+    const saveError = await addProcedureSet({ name: answer.trim(), procedures: names })
+    setSavingSet(false)
+    if (saveError) setSetsError(saveError)
+    else setSetsNote(`Saved ${names.length} ${names.length === 1 ? 'name' : 'names'} as the set "${answer.trim()}".`)
   }
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -447,6 +493,62 @@ export default function Timelines() {
               >
                 + Add procedure
               </button>
+              {(procedureSetsStatus === 'idle' || procedureSetsStatus === 'loading') && (
+                <p className="text-sm text-slate-500">Loading procedure sets…</p>
+              )}
+              {procedureSetsStatus === 'error' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-red-600">Couldn't load your procedure sets.</p>
+                  <button type="button" onClick={loadProcedureSets} className={secondaryButtonClass}>
+                    Try again
+                  </button>
+                </div>
+              )}
+              {procedureSetsStatus === 'ready' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {procedureSets.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      No procedure sets yet. Make one on the Procedure sets page, or save this list as one.
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        className={`${inputClass} sm:w-60`}
+                        aria-label="Procedure set"
+                        value={chosenSetId}
+                        onChange={(event) => setChosenSetId(event.target.value)}
+                      >
+                        <option value="">Choose a procedure set…</option>
+                        {procedureSets.map((procedureSet) => (
+                          <option key={procedureSet.id} value={procedureSet.id}>
+                            {procedureSet.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={applySet}
+                        disabled={!chosenSetId}
+                        className={secondaryButtonClass}
+                      >
+                        Apply
+                      </button>
+                    </>
+                  )}
+                  {procedures.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={saveAsSet}
+                      disabled={savingSet}
+                      className={`ml-auto ${secondaryButtonClass}`}
+                    >
+                      {savingSet ? 'Saving set…' : 'Save as a set'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {setsError && <p className="text-sm text-red-600">{setsError}</p>}
+              {setsNote && <p className="text-sm text-slate-500">{setsNote}</p>}
             </>
           )}
         </div>

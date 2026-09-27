@@ -22,13 +22,15 @@ function linkClass({ isActive }: { isActive: boolean }) {
 export default function Layout() {
   const loadTimelines = useStore((state) => state.loadTimelines)
   const loadPatients = useStore((state) => state.loadPatients)
+  const loadProcedureSets = useStore((state) => state.loadProcedureSets)
   const clear = useStore((state) => state.clear)
 
   useEffect(() => {
     loadTimelines()
     loadPatients()
+    loadProcedureSets()
     return () => clear()
-  }, [loadTimelines, loadPatients, clear])
+  }, [loadTimelines, loadPatients, loadProcedureSets, clear])
 
   return (
     <div className="flex min-h-screen flex-col">

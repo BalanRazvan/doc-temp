@@ -90,6 +90,33 @@ export function dropRemovedTicks(visits: TimelineVisit[], procedures: Procedure[
   return visits.map((visit) => ({ ...visit, procedures: visit.procedures.filter((id) => listed.has(id)) }))
 }
 
+function sameName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase()
+}
+
+export function repeatedName(names: string[]): string {
+  for (let index = 0; index < names.length; index++) {
+    if (names.slice(0, index).some((earlier) => sameName(earlier, names[index]))) return names[index].trim()
+  }
+  return ''
+}
+
+export function namesFromLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+}
+
+export function appendNames(procedures: Procedure[], names: string[], newId: () => string): Procedure[] {
+  const appended = [...procedures]
+  for (const name of names) {
+    if (appended.some((procedure) => sameName(procedure.name, name))) continue
+    appended.push({ id: newId(), name })
+  }
+  return appended
+}
+
 export function snapshotVisits(timeline: Timeline, anchorISO: string): Visit[] {
   return computeVisitDates(timeline.visits, anchorISO)
 }

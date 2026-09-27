@@ -4,12 +4,14 @@ import {
   addDays,
   addMonths,
   addProcedure,
+  appendNames,
   attendedOn,
   computeVisitDates,
   droppedRecords,
   dropRemovedTicks,
   fixedStepVisits,
   monthGrid,
+  namesFromLines,
   nextColor,
   orderVisits,
   parseISO,
@@ -17,6 +19,7 @@ import {
   recordActual,
   removeProcedure,
   renameProcedure,
+  repeatedName,
   resnapshot,
   snapshotVisits,
   startOfMonth,
@@ -620,5 +623,70 @@ test("editing a timeline's procedures afterwards does not change a patient alrea
   assert.deepEqual(
     timeline.visits.map((visit) => visit.procedures),
     [['p1', 'p3'], ['p3']],
+  )
+})
+
+function countingIds(): () => string {
+  let made = 0
+  return () => {
+    made++
+    return `n${made}`
+  }
+}
+
+test('a set typed one name per line keeps its names in order, trimmed, and ignores blank lines', () => {
+  assert.deepEqual(namesFromLines('  Vitals \n\nBloods\r\n   \nECG\n'), ['Vitals', 'Bloods', 'ECG'])
+  assert.deepEqual(namesFromLines(''), [])
+})
+
+test('a name typed on two lines is kept twice, so the Save check can name it', () => {
+  assert.deepEqual(namesFromLines('Bloods\nbloods'), ['Bloods', 'bloods'])
+})
+
+test('a name listed twice is found ignoring case and outer spaces, and given back as the second one, trimmed', () => {
+  assert.equal(repeatedName(['Bloods', 'Vitals', ' bloods ']), 'bloods')
+})
+
+test('names that differ, even only by an inner space, are not repeats', () => {
+  assert.equal(repeatedName(['Blood count', 'Blood  count', 'Bloods', 'ECG']), '')
+  assert.equal(repeatedName([]), '')
+})
+
+test("applying a set appends its names at the end, in the set's order, each with a new id", () => {
+  const procedures = [{ id: 'p1', name: 'Vitals' }]
+  const before = structuredClone(procedures)
+  assert.deepEqual(appendNames(procedures, ['Bloods', 'ECG'], countingIds()), [
+    { id: 'p1', name: 'Vitals' },
+    { id: 'n1', name: 'Bloods' },
+    { id: 'n2', name: 'ECG' },
+  ])
+  assert.deepEqual(procedures, before)
+})
+
+test('a name already in the list is skipped, ignoring case and outer spaces, and keeps its own id', () => {
+  const procedures = [{ id: 'p1', name: ' bloods ' }]
+  assert.deepEqual(appendNames(procedures, ['Vitals', 'Bloods', 'ECG'], countingIds()), [
+    { id: 'p1', name: ' bloods ' },
+    { id: 'n1', name: 'Vitals' },
+    { id: 'n2', name: 'ECG' },
+  ])
+})
+
+test('applying the same set twice adds nothing the second time', () => {
+  const newId = countingIds()
+  const once = appendNames([], ['Vitals', 'Bloods'], newId)
+  assert.deepEqual(appendNames(once, ['Vitals', 'Bloods'], newId), once)
+})
+
+test('procedures already ticked keep their ids and ticks when a set is applied', () => {
+  const visits = fixedStepVisits(3, 4, 3, { 1: ['p1', 'p2'], 2: ['p2'] })
+  const procedures = appendNames(soaRows, ['Bloods', 'Weight', 'Urine'], countingIds())
+  assert.deepEqual(
+    procedures.map((procedure) => procedure.id),
+    ['p1', 'p2', 'p3', 'n1', 'n2'],
+  )
+  assert.deepEqual(
+    dropRemovedTicks(visits, procedures).map((visit) => visit.procedures),
+    [['p1', 'p2'], ['p2'], []],
   )
 })
