@@ -1,22 +1,30 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
 import {
+  addProcedure,
+  appendNames,
   computeVisitDates,
+  dropRemovedTicks,
   fixedStepVisits,
   longDate,
   nextColor,
   orderVisits,
+  removeProcedure,
+  renameProcedure,
+  repeatedName,
   shortDate,
+  toggleTick,
   toISO,
   windowDates,
 } from '../lib/schedule.ts'
+import type { TicksByVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
-import type { Timeline, TimelineVisit } from '../lib/types.ts'
+import type { Procedure, Timeline, TimelineVisit } from '../lib/types.ts'
 import { buttonClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
 
 type Mode = 'fixed' | 'per-visit'
 
-type Row = { week: string; window: string }
+type Row = { week: string; window: string; procedures: string[] }
 
 function isWholeNumber(text: string): boolean {
   return text.trim() !== '' && Number.isInteger(Number(text))
@@ -48,12 +56,25 @@ function rowsProblem(rows: Row[]): string {
   return ''
 }
 
+function proceduresProblem(procedures: Procedure[]): string {
+  const names = procedures.map((procedure) => procedure.name.trim())
+  if (names.includes('')) return 'Every procedure needs a name, or remove its row.'
+  const repeat = repeatedName(names)
+  if (repeat) return `Two procedures are both called "${repeat}".`
+  return ''
+}
+
 function toRow(visit: TimelineVisit): Row {
-  return { week: String(visit.week), window: String(visit.window) }
+  return { week: String(visit.week), window: String(visit.window), procedures: visit.procedures }
 }
 
 function toVisit(row: Row, index: number): TimelineVisit {
-  return { visitNumber: index + 1, week: Number(row.week), window: Number(row.window), procedures: [] }
+  return {
+    visitNumber: index + 1,
+    week: Number(row.week),
+    window: Number(row.window),
+    procedures: row.procedures,
+  }
 }
 
 function modeClass(active: boolean): string {
@@ -71,6 +92,10 @@ export default function Timelines() {
   const deleteTimeline = useStore((state) => state.deleteTimeline)
   const patients = useStore((state) => state.patients)
   const patientsStatus = useStore((state) => state.patientsStatus)
+  const procedureSets = useStore((state) => state.procedureSets)
+  const procedureSetsStatus = useStore((state) => state.procedureSetsStatus)
+  const loadProcedureSets = useStore((state) => state.loadProcedureSets)
+  const addProcedureSet = useStore((state) => state.addProcedureSet)
 
   const [editing, setEditing] = useState<Timeline | null>(null)
   const [name, setName] = useState('')
@@ -79,18 +104,25 @@ export default function Timelines() {
   const [every, setEvery] = useState('4')
   const [windowDays, setWindowDays] = useState('3')
   const [rows, setRows] = useState<Row[]>([])
+  const [fixedTicks, setFixedTicks] = useState<TicksByVisit>({})
+  const [procedures, setProcedures] = useState<Procedure[]>([])
   const [previewFrom, setPreviewFrom] = useState(toISO(new Date()))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [listError, setListError] = useState('')
+  const [chosenSetId, setChosenSetId] = useState('')
+  const [savingSet, setSavingSet] = useState(false)
+  const [setsNote, setSetsNote] = useState('')
+  const [setsError, setSetsError] = useState('')
 
   const problem = mode === 'fixed' ? fixedProblem(count, every, windowDays) : rowsProblem(rows)
   let visits: TimelineVisit[] = []
   if (!problem) {
     visits =
       mode === 'fixed'
-        ? fixedStepVisits(Number(count), Number(every), Number(windowDays))
+        ? fixedStepVisits(Number(count), Number(every), Number(windowDays), fixedTicks)
         : orderVisits(rows.map(toVisit))
+    visits = dropRemovedTicks(visits, procedures)
   }
   const preview = previewFrom ? computeVisitDates(visits, previewFrom) : []
 
@@ -101,7 +133,11 @@ export default function Timelines() {
     setEditing(null)
     setName('')
     setMode('fixed')
+    setFixedTicks({})
+    setProcedures([])
     setError('')
+    setSetsNote('')
+    setSetsError('')
   }
 
   function startEdit(timeline: Timeline) {
@@ -109,7 +145,11 @@ export default function Timelines() {
     setName(timeline.name)
     setMode('per-visit')
     setRows(timeline.visits.map(toRow))
+    setFixedTicks({})
+    setProcedures(timeline.procedures)
     setError('')
+    setSetsNote('')
+    setSetsError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -128,7 +168,49 @@ export default function Timelines() {
   }
 
   function addRow() {
-    setRows([...rows, { week: '', window: '' }])
+    setRows([...rows, { week: '', window: '', procedures: [] }])
+  }
+
+  function toggleCell(visit: TimelineVisit, procedureId: string) {
+    const ticked = toggleTick(visit.procedures, procedureId)
+    if (mode === 'fixed') {
+      setFixedTicks({ ...fixedTicks, [visit.visitNumber]: ticked })
+    } else {
+      setRows(rows.map((row) => (Number(row.week) === visit.week ? { ...row, procedures: ticked } : row)))
+    }
+  }
+
+  function applySet() {
+    const chosen = procedureSets.find((procedureSet) => procedureSet.id === chosenSetId)
+    if (!chosen) return
+    const applied = appendNames(procedures, chosen.procedures, () => crypto.randomUUID())
+    const added = applied.length - procedures.length
+    const skipped = chosen.procedures.length - added
+    setProcedures(applied)
+    setSetsError('')
+    setSetsNote(`Added ${added} from "${chosen.name}"${skipped > 0 ? `; ${skipped} already listed.` : '.'}`)
+  }
+
+  async function saveAsSet() {
+    setSetsNote('')
+    setSetsError('')
+    const namesProblem = proceduresProblem(procedures)
+    if (namesProblem) {
+      setSetsError(namesProblem)
+      return
+    }
+    const answer = window.prompt('Name the new procedure set', name.trim())
+    if (answer === null) return
+    if (!answer.trim()) {
+      setSetsError('The set needs a name.')
+      return
+    }
+    setSavingSet(true)
+    const names = procedures.map((procedure) => procedure.name.trim())
+    const saveError = await addProcedureSet({ name: answer.trim(), procedures: names })
+    setSavingSet(false)
+    if (saveError) setSetsError(saveError)
+    else setSetsNote(`Saved ${names.length} ${names.length === 1 ? 'name' : 'names'} as the set "${answer.trim()}".`)
   }
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -141,11 +223,17 @@ export default function Timelines() {
       setError(problem)
       return
     }
+    const namesProblem = proceduresProblem(procedures)
+    if (namesProblem) {
+      setError(namesProblem)
+      return
+    }
     setBusy(true)
     setError('')
+    const trimmed = procedures.map((procedure) => ({ ...procedure, name: procedure.name.trim() }))
     const saveError = editing
-      ? await updateTimeline(editing.id, { name: name.trim(), visits })
-      : await addTimeline({ name: name.trim(), color: newColor, visits })
+      ? await updateTimeline(editing.id, { name: name.trim(), visits, procedures: trimmed })
+      : await addTimeline({ name: name.trim(), color: newColor, visits, procedures: trimmed })
     setBusy(false)
     if (saveError) setError(saveError)
     else startNew()
@@ -168,10 +256,10 @@ export default function Timelines() {
   }
 
   return (
-    <div className="grid items-start gap-6 p-6 lg:grid-cols-2">
+    <div className="grid items-start gap-6 p-6 lg:grid-cols-5">
       <form
         onSubmit={handleSubmit}
-        className={`space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm ${editing ? 'ring-2 ring-slate-400' : ''}`}
+        className={`min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm lg:col-span-3 ${editing ? 'ring-2 ring-slate-400' : ''}`}
       >
         <div className="flex items-center gap-2">
           {(editing || timelinesStatus === 'ready') && (
@@ -185,8 +273,8 @@ export default function Timelines() {
 
         {editing && (
           <p className="text-sm text-slate-600">
-            Patients already on this timeline keep their own copy of its schedule. These changes only reach
-            patients you assign after saving.
+            Patients already on this timeline keep their own copy of its schedule and procedures. These changes
+            only reach patients you assign after saving.
           </p>
         )}
 
@@ -328,6 +416,143 @@ export default function Timelines() {
           )}
         </div>
 
+        <div className="space-y-2">
+          <h3 className={labelClass}>Schedule of assessments</h3>
+          {problem ? (
+            <p className="text-sm text-slate-500">Procedures can be ticked once the visits above are valid.</p>
+          ) : (
+            <>
+              {procedures.length > 0 && (
+                <div className="max-w-fit scroll-pl-56 overflow-x-auto rounded-md border border-slate-200">
+                  <table className="border-separate border-spacing-0 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="sticky left-0 border-r border-slate-200 bg-white" />
+                        {visits.map((visit) => (
+                          <th
+                            key={visit.visitNumber}
+                            scope="col"
+                            className="px-1 py-1 text-center text-xs font-medium text-slate-500 tabular-nums"
+                          >
+                            #{visit.visitNumber}
+                            <span className="block font-normal">w{visit.week}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {procedures.map((procedure) => {
+                        const label = procedure.name.trim() || 'Unnamed procedure'
+                        return (
+                          <tr key={procedure.id}>
+                            <td className="sticky left-0 border-t border-r border-slate-200 bg-white p-1">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  className="w-44 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                  aria-label="Procedure name"
+                                  placeholder="Procedure"
+                                  value={procedure.name}
+                                  onChange={(event) =>
+                                    setProcedures(renameProcedure(procedures, procedure.id, event.target.value))
+                                  }
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setProcedures(removeProcedure(procedures, procedure.id))}
+                                  aria-label={`Remove ${label}`}
+                                  className="w-6 shrink-0 text-slate-400 hover:text-slate-900"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                            {visits.map((visit) => (
+                              <td key={visit.visitNumber} className="border-t border-slate-200 p-0">
+                                <label className="flex h-9 w-10 items-center justify-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 accent-slate-900"
+                                    aria-label={`${label} at visit ${visit.visitNumber}`}
+                                    checked={visit.procedures.includes(procedure.id)}
+                                    onChange={() => toggleCell(visit, procedure.id)}
+                                  />
+                                </label>
+                              </td>
+                            ))}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setProcedures(addProcedure(procedures, crypto.randomUUID()))}
+                className={secondaryButtonClass}
+              >
+                + Add procedure
+              </button>
+              {(procedureSetsStatus === 'idle' || procedureSetsStatus === 'loading') && (
+                <p className="text-sm text-slate-500">Loading procedure sets…</p>
+              )}
+              {procedureSetsStatus === 'error' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-red-600">Couldn't load your procedure sets.</p>
+                  <button type="button" onClick={loadProcedureSets} className={secondaryButtonClass}>
+                    Try again
+                  </button>
+                </div>
+              )}
+              {procedureSetsStatus === 'ready' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {procedureSets.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      No procedure sets yet. Make one on the Procedure sets page, or save this list as one.
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        className={`${inputClass} sm:w-60`}
+                        aria-label="Procedure set"
+                        value={chosenSetId}
+                        onChange={(event) => setChosenSetId(event.target.value)}
+                      >
+                        <option value="">Choose a procedure set…</option>
+                        {procedureSets.map((procedureSet) => (
+                          <option key={procedureSet.id} value={procedureSet.id}>
+                            {procedureSet.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={applySet}
+                        disabled={!chosenSetId}
+                        className={secondaryButtonClass}
+                      >
+                        Apply
+                      </button>
+                    </>
+                  )}
+                  {procedures.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={saveAsSet}
+                      disabled={savingSet}
+                      className={`ml-auto ${secondaryButtonClass}`}
+                    >
+                      {savingSet ? 'Saving set…' : 'Save as a set'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {setsError && <p className="text-sm text-red-600">{setsError}</p>}
+              {setsNote && <p className="text-sm text-slate-500">{setsNote}</p>}
+            </>
+          )}
+        </div>
+
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2">
           <button className={buttonClass} disabled={busy || timelinesStatus !== 'ready'}>
@@ -341,7 +566,7 @@ export default function Timelines() {
         </div>
       </form>
 
-      <section className="space-y-4">
+      <section className="space-y-4 lg:col-span-2">
         {(timelinesStatus === 'idle' || timelinesStatus === 'loading') && (
           <p className="text-sm text-slate-500">Loading timelines…</p>
         )}
@@ -371,6 +596,8 @@ export default function Timelines() {
                 <h3 className="min-w-0 truncate font-semibold">{timeline.name}</h3>
                 <span className="text-xs text-slate-500">
                   {timeline.visits.length} {timeline.visits.length === 1 ? 'visit' : 'visits'}
+                  {timeline.procedures.length > 0 &&
+                    ` · ${timeline.procedures.length} ${timeline.procedures.length === 1 ? 'procedure' : 'procedures'}`}
                 </span>
                 <div className="ml-auto flex gap-2">
                   <button onClick={() => startEdit(timeline)} className={secondaryButtonClass}>

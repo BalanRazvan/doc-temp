@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from './supabase.ts'
-import type { Patient, Procedure, Timeline, TimelineVisit, Visit } from './types.ts'
+import type { Patient, Procedure, ProcedureSet, Timeline, TimelineVisit, Visit } from './types.ts'
 
 export type Status = 'idle' | 'loading' | 'error' | 'ready'
 
@@ -8,11 +8,13 @@ export type NewTimeline = {
   name: string
   color: string
   visits: TimelineVisit[]
+  procedures: Procedure[]
 }
 
 export type TimelineChanges = {
   name: string
   visits: TimelineVisit[]
+  procedures: Procedure[]
 }
 
 export type NewPatient = {
@@ -32,6 +34,16 @@ export type PatientChanges = {
   procedures?: Procedure[]
 }
 
+export type NewProcedureSet = {
+  name: string
+  procedures: string[]
+}
+
+export type ProcedureSetChanges = {
+  name: string
+  procedures: string[]
+}
+
 type Store = {
   timelines: Timeline[]
   timelinesStatus: Status
@@ -45,6 +57,12 @@ type Store = {
   addPatient: (patient: NewPatient) => Promise<string | null>
   updatePatient: (id: string, changes: PatientChanges) => Promise<string | null>
   deletePatient: (id: string) => Promise<string | null>
+  procedureSets: ProcedureSet[]
+  procedureSetsStatus: Status
+  loadProcedureSets: () => Promise<void>
+  addProcedureSet: (procedureSet: NewProcedureSet) => Promise<string | null>
+  updateProcedureSet: (id: string, changes: ProcedureSetChanges) => Promise<string | null>
+  deleteProcedureSet: (id: string) => Promise<string | null>
   clear: () => void
 }
 
@@ -120,5 +138,46 @@ export const useStore = create<Store>((set) => ({
     return null
   },
 
-  clear: () => set({ timelines: [], timelinesStatus: 'idle', patients: [], patientsStatus: 'idle' }),
+  procedureSets: [],
+  procedureSetsStatus: 'idle',
+
+  loadProcedureSets: async () => {
+    set({ procedureSetsStatus: 'loading' })
+    const result = await supabase.from('procedure_sets').select().order('created_at')
+    if (result.error) set({ procedureSetsStatus: 'error' })
+    else set({ procedureSets: result.data, procedureSetsStatus: 'ready' })
+  },
+
+  addProcedureSet: async (procedureSet) => {
+    const result = await supabase.from('procedure_sets').insert(procedureSet).select().single()
+    if (result.error) return result.error.message
+    set((state) => ({ procedureSets: [...state.procedureSets, result.data] }))
+    return null
+  },
+
+  updateProcedureSet: async (id, changes) => {
+    const result = await supabase.from('procedure_sets').update(changes).eq('id', id).select().single()
+    if (result.error) return result.error.message
+    set((state) => ({
+      procedureSets: state.procedureSets.map((procedureSet) => (procedureSet.id === id ? result.data : procedureSet)),
+    }))
+    return null
+  },
+
+  deleteProcedureSet: async (id) => {
+    const result = await supabase.from('procedure_sets').delete().eq('id', id)
+    if (result.error) return result.error.message
+    set((state) => ({ procedureSets: state.procedureSets.filter((procedureSet) => procedureSet.id !== id) }))
+    return null
+  },
+
+  clear: () =>
+    set({
+      timelines: [],
+      timelinesStatus: 'idle',
+      patients: [],
+      patientsStatus: 'idle',
+      procedureSets: [],
+      procedureSetsStatus: 'idle',
+    }),
 }))
