@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   addDays,
   computeVisitDates,
+  droppedRecords,
   fixedStepVisits,
   nextColor,
   orderVisits,
@@ -200,6 +201,30 @@ test('a visit the new timeline adds starts with nothing recorded', () => {
   const visits = resnapshot([patient], edited, '2026-06-28')
   assert.equal(visitStatus(visits[1]), 'scheduled')
   assert.equal(visits[1].targetDate, '2026-11-15')
+})
+
+test('a switch lists the recorded visits the new timeline does not have', () => {
+  const snapshot = snapshotVisits(makeTimeline(protocol), '2026-06-28')
+  const patient = [
+    recordActual(snapshot[0], '2026-06-29'),
+    recordActual(snapshot[1], '2026-07-27'),
+    snapshot[2],
+  ]
+  const shorter = makeTimeline([{ visitNumber: 1, week: 0, window: 3, procedures: [] }])
+  assert.deepEqual(
+    droppedRecords(patient, shorter).map((visit) => visit.visitNumber),
+    [2],
+  )
+})
+
+test('a note on its own counts as something a switch would drop', () => {
+  const snapshot = snapshotVisits(makeTimeline(protocol), '2026-06-28')
+  const patient = [snapshot[0], { ...snapshot[1], note: 'phoned to cancel' }, snapshot[2]]
+  const shorter = makeTimeline([{ visitNumber: 1, week: 0, window: 3, procedures: [] }])
+  assert.deepEqual(
+    droppedRecords(patient, shorter).map((visit) => visit.visitNumber),
+    [2],
+  )
 })
 
 test('each new timeline gets the next golden-angle hue', () => {

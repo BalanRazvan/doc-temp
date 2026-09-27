@@ -81,6 +81,8 @@ export default function Timelines() {
   const addTimeline = useStore((state) => state.addTimeline)
   const updateTimeline = useStore((state) => state.updateTimeline)
   const deleteTimeline = useStore((state) => state.deleteTimeline)
+  const patients = useStore((state) => state.patients)
+  const patientsStatus = useStore((state) => state.patientsStatus)
 
   const [editing, setEditing] = useState<Timeline | null>(null)
   const [name, setName] = useState('')
@@ -162,10 +164,15 @@ export default function Timelines() {
   }
 
   async function handleDelete(timeline: Timeline) {
-    const confirmed = window.confirm(
-      `Delete "${timeline.name}"? Patients already on it keep every date and attendance record, but lose this timeline's name and colour.`,
-    )
-    if (!confirmed) return
+    let message = `Delete "${timeline.name}"? Patients already on it keep every date and attendance record, but lose this timeline's name and colour.`
+    if (patientsStatus === 'ready') {
+      const onIt = patients.filter((patient) => patient.source_timeline_id === timeline.id).length
+      message =
+        onIt === 0
+          ? `Delete "${timeline.name}"? No patients are on it.`
+          : `Delete "${timeline.name}"? Patients on it: ${onIt}. They keep every date and attendance record, but lose this timeline's name and colour.`
+    }
+    if (!window.confirm(message)) return
     setListError('')
     const deleteError = await deleteTimeline(timeline.id)
     if (deleteError) setListError(deleteError)
