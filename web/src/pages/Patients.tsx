@@ -5,9 +5,9 @@ import {
   computeVisitDates,
   droppedRecords,
   longDate,
-  parseISO,
   recordActual,
   resnapshot,
+  shortDate,
   snapshotVisits,
   toISO,
   visitStatus,
@@ -19,10 +19,6 @@ import type { Patient, Visit } from '../lib/types.ts'
 import { buttonClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
 
 type OpenVisit = { patientId: string; visitNumber: number }
-
-function shortDate(iso: string): string {
-  return parseISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
 
 function visitNumbers(visits: Visit[]): string {
   return visits.map((visit) => `#${visit.visitNumber}`).join(', ')

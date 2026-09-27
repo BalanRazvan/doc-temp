@@ -11,6 +11,7 @@ import {
   nextColor,
   orderVisits,
   parseISO,
+  plannedProcedures,
   recordActual,
   resnapshot,
   snapshotVisits,
@@ -436,4 +437,31 @@ test('a day lists every visit attended on it, in the order the patients come', (
     [['Zoe', 2], ['Adam', 1]],
   )
   assert.deepEqual(attendedOn([zoe, adam], '2026-10-01'), [])
+})
+
+const soaRows = [
+  { id: 'p1', name: 'Vitals' },
+  { id: 'p2', name: 'Bloods' },
+  { id: 'p3', name: 'ECG' },
+]
+
+test("a visit's procedures come in the order of the patient's list, not the order of the visit's ids", () => {
+  const visit = { ...visitOn('2026-10-14', 3), procedures: ['p3', 'p1'] }
+  const patient = { ...enrolled('Zoe', [visit]), procedures: soaRows }
+  assert.deepEqual(
+    plannedProcedures(patient, visit).map((procedure) => procedure.name),
+    ['Vitals', 'ECG'],
+  )
+})
+
+test('a visit with no procedures lists none', () => {
+  const visit = visitOn('2026-10-14', 3)
+  const patient = { ...enrolled('Zoe', [visit]), procedures: soaRows }
+  assert.deepEqual(plannedProcedures(patient, visit), [])
+})
+
+test("an id the patient's list does not have is left out, and the others still show", () => {
+  const visit = { ...visitOn('2026-10-14', 3), procedures: ['p2', 'gone'] }
+  const patient = { ...enrolled('Zoe', [visit]), procedures: soaRows }
+  assert.deepEqual(plannedProcedures(patient, visit), [{ id: 'p2', name: 'Bloods' }])
 })

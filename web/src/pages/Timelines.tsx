@@ -6,7 +6,7 @@ import {
   longDate,
   nextColor,
   orderVisits,
-  parseISO,
+  shortDate,
   toISO,
   windowDates,
 } from '../lib/schedule.ts'
@@ -54,10 +54,6 @@ function toRow(visit: TimelineVisit): Row {
 
 function toVisit(row: Row, index: number): TimelineVisit {
   return { visitNumber: index + 1, week: Number(row.week), window: Number(row.window), procedures: [] }
-}
-
-function shortDate(iso: string): string {
-  return parseISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 function modeClass(active: boolean): string {

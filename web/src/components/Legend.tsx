@@ -1,4 +1,5 @@
 import type { Timeline } from '../lib/types.ts'
+import { attendedPillClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 const headingClass = 'mb-2 text-xs font-medium tracking-wide text-slate-500 uppercase'
 
@@ -30,19 +31,19 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
         <h3 className={headingClass}>On a day</h3>
         <ul className="space-y-2">
           <li className="flex items-center gap-3">
-            <span className="w-24 shrink-0 rounded border border-slate-300 bg-slate-300 px-1.5 text-xs leading-5 font-medium text-slate-900">
+            <span className={`w-24 shrink-0 ${targetPillClass}`}>
               Name · #2
             </span>
             <span>Target day</span>
           </li>
           <li className="flex items-center gap-3">
-            <span className="w-24 shrink-0 rounded border border-slate-300 bg-slate-100 px-1.5 text-xs leading-5 text-slate-700">
+            <span className={`w-24 shrink-0 ${windowPillClass}`}>
               Name · #2
             </span>
             <span>Window day: coming today is still on time</span>
           </li>
           <li className="flex items-center gap-3">
-            <span className="w-24 shrink-0 rounded border border-l-4 border-slate-300 bg-white px-1.5 text-xs leading-5 font-medium text-slate-900">
+            <span className={`w-24 shrink-0 ${attendedPillClass}`}>
               ✓ Name · #2
             </span>
             <span>Attended on this day, not on its target day</span>

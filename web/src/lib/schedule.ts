@@ -1,4 +1,4 @@
-import type { Patient, Timeline, TimelineVisit, Visit } from './types.ts'
+import type { Patient, Procedure, Timeline, TimelineVisit, Visit } from './types.ts'
 
 export type VisitStatus = 'scheduled' | 'in-window' | 'deviation'
 
@@ -23,6 +23,10 @@ export function longDate(iso: string): string {
     month: 'short',
     year: 'numeric',
   })
+}
+
+export function shortDate(iso: string): string {
+  return parseISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -156,6 +160,10 @@ export function attendedOn(patients: Patient[], dayISO: string): DayVisit[] {
     }
   }
   return found
+}
+
+export function plannedProcedures(patient: Patient, visit: Visit): Procedure[] {
+  return patient.procedures.filter((procedure) => visit.procedures.includes(procedure.id))
 }
 
 function goldenAngleColor(n: number): string {
