@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router'
+import { useStore } from '../lib/store.ts'
 import { supabase } from '../lib/supabase.ts'
 
 const links = [
@@ -18,6 +20,14 @@ function linkClass({ isActive }: { isActive: boolean }) {
 }
 
 export default function Layout() {
+  const loadTimelines = useStore((state) => state.loadTimelines)
+  const clear = useStore((state) => state.clear)
+
+  useEffect(() => {
+    loadTimelines()
+    return () => clear()
+  }, [loadTimelines, clear])
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 px-4 py-2">

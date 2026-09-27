@@ -3,6 +3,9 @@ import assert from 'node:assert/strict'
 import {
   addDays,
   computeVisitDates,
+  fixedStepVisits,
+  nextColor,
+  orderVisits,
   parseISO,
   recordActual,
   resnapshot,
@@ -197,4 +200,39 @@ test('a visit the new timeline adds starts with nothing recorded', () => {
   const visits = resnapshot([patient], edited, '2026-06-28')
   assert.equal(visitStatus(visits[1]), 'scheduled')
   assert.equal(visits[1].targetDate, '2026-11-15')
+})
+
+test('each new timeline gets the next golden-angle hue', () => {
+  const first = nextColor([])
+  const second = nextColor([first])
+  const third = nextColor([first, second])
+  assert.deepEqual([first, second, third], ['hsl(0 70% 50%)', 'hsl(137.5 70% 50%)', 'hsl(275 70% 50%)'])
+})
+
+test('after a timeline is deleted the next one takes its free hue, not a hue still in use', () => {
+  assert.equal(nextColor(['hsl(0 70% 50%)', 'hsl(275 70% 50%)']), 'hsl(137.5 70% 50%)')
+})
+
+test('visits typed out of order are put in week order and numbered from 1', () => {
+  const typed: TimelineVisit[] = [
+    { visitNumber: 1, week: 4, window: 3, procedures: [] },
+    { visitNumber: 2, week: -2, window: 5, procedures: [] },
+    { visitNumber: 3, week: 0, window: 3, procedures: [] },
+  ]
+  const ordered = orderVisits(typed)
+  assert.deepEqual(
+    ordered.map((visit) => [visit.visitNumber, visit.week]),
+    [[1, -2], [2, 0], [3, 4]],
+  )
+  assert.equal(typed[0].week, 4)
+  assert.equal(computeVisitDates(ordered, '2026-06-28')[0].targetDate, '2026-06-28')
+})
+
+test('a fixed step makes evenly spaced visits from week 0', () => {
+  const visits = fixedStepVisits(4, 3, 2)
+  assert.deepEqual(
+    visits.map((visit) => [visit.visitNumber, visit.week, visit.window]),
+    [[1, 0, 2], [2, 3, 2], [3, 6, 2], [4, 9, 2]],
+  )
+  assert.deepEqual(visits[0].procedures, [])
 })
