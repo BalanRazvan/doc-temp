@@ -21,12 +21,14 @@ function linkClass({ isActive }: { isActive: boolean }) {
 
 export default function Layout() {
   const loadTimelines = useStore((state) => state.loadTimelines)
+  const loadPatients = useStore((state) => state.loadPatients)
   const clear = useStore((state) => state.clear)
 
   useEffect(() => {
     loadTimelines()
+    loadPatients()
     return () => clear()
-  }, [loadTimelines, clear])
+  }, [loadTimelines, loadPatients, clear])
 
   return (
     <div className="flex min-h-screen flex-col">

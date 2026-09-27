@@ -65,6 +65,14 @@ export function resnapshot(
   })
 }
 
+export function droppedRecords(patientVisits: Visit[], timeline: Timeline): Visit[] {
+  const kept = new Set(timeline.visits.map((visit) => visit.visitNumber))
+  return patientVisits.filter((visit) => {
+    if (kept.has(visit.visitNumber)) return false
+    return Boolean(visit.actualDate || visit.note)
+  })
+}
+
 export function windowDates(visit: Visit): { from: string; to: string } {
   const target = parseISO(visit.targetDate)
   return {
