@@ -8,11 +8,13 @@ export type NewTimeline = {
   name: string
   color: string
   visits: TimelineVisit[]
+  procedures: Procedure[]
 }
 
 export type TimelineChanges = {
   name: string
   visits: TimelineVisit[]
+  procedures: Procedure[]
 }
 
 export type NewPatient = {

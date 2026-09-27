@@ -3,9 +3,11 @@ import assert from 'node:assert/strict'
 import {
   addDays,
   addMonths,
+  addProcedure,
   attendedOn,
   computeVisitDates,
   droppedRecords,
+  dropRemovedTicks,
   fixedStepVisits,
   monthGrid,
   nextColor,
@@ -13,9 +15,12 @@ import {
   parseISO,
   plannedProcedures,
   recordActual,
+  removeProcedure,
+  renameProcedure,
   resnapshot,
   snapshotVisits,
   startOfMonth,
+  toggleTick,
   toISO,
   visitsOn,
   visitStatus,
@@ -275,12 +280,124 @@ test('visits typed out of order are put in week order and numbered from 1', () =
 })
 
 test('a fixed step makes evenly spaced visits from week 0', () => {
-  const visits = fixedStepVisits(4, 3, 2)
+  const visits = fixedStepVisits(4, 3, 2, {})
   assert.deepEqual(
     visits.map((visit) => [visit.visitNumber, visit.week, visit.window]),
     [[1, 0, 2], [2, 3, 2], [3, 6, 2], [4, 9, 2]],
   )
   assert.deepEqual(visits[0].procedures, [])
+})
+
+test('a new procedure goes at the end of the list, blank, with the id it is given', () => {
+  const procedures = [{ id: 'p1', name: 'Vitals' }]
+  assert.deepEqual(addProcedure(procedures, 'p2'), [
+    { id: 'p1', name: 'Vitals' },
+    { id: 'p2', name: '' },
+  ])
+  assert.equal(procedures.length, 1)
+})
+
+test('renaming a procedure keeps its id and its place, even beside another with the same name', () => {
+  const procedures = [
+    { id: 'p1', name: '' },
+    { id: 'p2', name: '' },
+    { id: 'p3', name: 'ECG' },
+  ]
+  assert.deepEqual(renameProcedure(procedures, 'p2', 'Bloods'), [
+    { id: 'p1', name: '' },
+    { id: 'p2', name: 'Bloods' },
+    { id: 'p3', name: 'ECG' },
+  ])
+  assert.equal(procedures[1].name, '')
+})
+
+test('removing a procedure removes that one only, even when another has the same name', () => {
+  const procedures = [
+    { id: 'p1', name: 'Bloods' },
+    { id: 'p2', name: 'Vitals' },
+    { id: 'p3', name: 'Bloods' },
+  ]
+  assert.deepEqual(removeProcedure(procedures, 'p3'), [
+    { id: 'p1', name: 'Bloods' },
+    { id: 'p2', name: 'Vitals' },
+  ])
+  assert.equal(procedures.length, 3)
+})
+
+test('ticking a cell adds the procedure to the visit, and ticking it again takes it off', () => {
+  const ticks = ['p1']
+  const ticked = toggleTick(ticks, 'p2')
+  assert.deepEqual(ticked, ['p1', 'p2'])
+  assert.deepEqual(toggleTick(ticked, 'p1'), ['p2'])
+  assert.deepEqual(ticks, ['p1'])
+})
+
+test('a visit whose week puts it earlier keeps its own ticks when the visits are put in order', () => {
+  const typed: TimelineVisit[] = [
+    { visitNumber: 1, week: 0, window: 3, procedures: ['p1'] },
+    { visitNumber: 2, week: 4, window: 3, procedures: [] },
+    { visitNumber: 3, week: -2, window: 5, procedures: ['p2', 'p3'] },
+  ]
+  assert.deepEqual(
+    orderVisits(typed).map((visit) => [visit.visitNumber, visit.week, visit.procedures]),
+    [[1, -2, ['p2', 'p3']], [2, 0, ['p1']], [3, 4, []]],
+  )
+})
+
+test('removing a visit leaves every other visit with its own ticks, not its neighbour\'s', () => {
+  const typed: TimelineVisit[] = [
+    { visitNumber: 1, week: 0, window: 3, procedures: ['p1'] },
+    { visitNumber: 2, week: 4, window: 3, procedures: ['p2'] },
+    { visitNumber: 3, week: 8, window: 3, procedures: ['p3'] },
+  ]
+  const kept = orderVisits(typed.filter((visit) => visit.week !== 4))
+  assert.deepEqual(
+    kept.map((visit) => [visit.visitNumber, visit.week, visit.procedures]),
+    [[1, 0, ['p1']], [2, 8, ['p3']]],
+  )
+})
+
+test("changing a fixed step's spacing or window keeps each visit's ticks", () => {
+  const ticks = { 1: ['p1', 'p2'], 3: ['p2'] }
+  const before = fixedStepVisits(3, 4, 3, ticks)
+  const after = fixedStepVisits(3, 8, 5, ticks)
+  assert.deepEqual(
+    after.map((visit) => [visit.week, visit.procedures]),
+    [[0, ['p1', 'p2']], [8, []], [16, ['p2']]],
+  )
+  assert.deepEqual(
+    after.map((visit) => visit.procedures),
+    before.map((visit) => visit.procedures),
+  )
+})
+
+test('a lower fixed count leaves the later ticks out, and raising it again brings them back', () => {
+  const ticks = { 1: ['p1'], 4: ['p2'] }
+  assert.deepEqual(
+    fixedStepVisits(1, 4, 3, ticks).map((visit) => visit.procedures),
+    [['p1']],
+  )
+  assert.deepEqual(
+    fixedStepVisits(5, 4, 3, ticks).map((visit) => visit.procedures),
+    [['p1'], [], [], ['p2'], []],
+  )
+})
+
+test("a removed procedure's ticks are dropped from every visit, and the other ticks stay", () => {
+  const visits: TimelineVisit[] = [
+    { visitNumber: 1, week: 0, window: 3, procedures: ['p1', 'gone'] },
+    { visitNumber: 2, week: 4, window: 3, procedures: ['gone'] },
+    { visitNumber: 3, week: 8, window: 3, procedures: ['p2'] },
+  ]
+  const procedures = [
+    { id: 'p1', name: 'Vitals' },
+    { id: 'p2', name: 'Bloods' },
+  ]
+  assert.deepEqual(
+    dropRemovedTicks(visits, procedures).map((visit) => visit.procedures),
+    [['p1'], [], ['p2']],
+  )
+  assert.deepEqual(visits[0].procedures, ['p1', 'gone'])
 })
 
 test('the month on screen is kept as its 1st day', () => {
@@ -464,4 +581,44 @@ test("an id the patient's list does not have is left out, and the others still s
   const visit = { ...visitOn('2026-10-14', 3), procedures: ['p2', 'gone'] }
   const patient = { ...enrolled('Zoe', [visit]), procedures: soaRows }
   assert.deepEqual(plannedProcedures(patient, visit), [{ id: 'p2', name: 'Bloods' }])
+})
+
+test('a patient snapshotted from a ticked timeline plans each visit\'s procedures in row order', () => {
+  const timeline = {
+    ...makeTimeline(fixedStepVisits(3, 4, 3, { 1: ['p3', 'p1'], 3: ['p2'] })),
+    procedures: soaRows,
+  }
+  const visits = snapshotVisits(timeline, '2026-06-28')
+  const patient = { ...enrolled('Zoe', visits), procedures: timeline.procedures }
+  assert.deepEqual(
+    patient.visits.map((visit) => plannedProcedures(patient, visit).map((procedure) => procedure.name)),
+    [['Vitals', 'ECG'], [], ['Bloods']],
+  )
+})
+
+test("editing a timeline's procedures afterwards does not change a patient already on it", () => {
+  const timeline = {
+    ...makeTimeline(fixedStepVisits(2, 4, 3, { 1: ['p1', 'p2'], 2: ['p2'] })),
+    procedures: soaRows,
+  }
+  const patient = {
+    ...enrolled('Zoe', snapshotVisits(timeline, '2026-06-28')),
+    procedures: timeline.procedures,
+  }
+  const before = structuredClone(patient)
+
+  const procedures = removeProcedure(renameProcedure(timeline.procedures, 'p1', 'Vital signs'), 'p2')
+  const ticked = timeline.visits.map((visit) => ({ ...visit, procedures: toggleTick(visit.procedures, 'p3') }))
+  timeline.procedures = procedures
+  timeline.visits = dropRemovedTicks(ticked, procedures)
+
+  assert.deepEqual(patient, before)
+  assert.deepEqual(
+    patient.visits.map((visit) => plannedProcedures(patient, visit).map((procedure) => procedure.name)),
+    [['Vitals', 'Bloods'], ['Bloods']],
+  )
+  assert.deepEqual(
+    timeline.visits.map((visit) => visit.procedures),
+    [['p1', 'p3'], ['p3']],
+  )
 })

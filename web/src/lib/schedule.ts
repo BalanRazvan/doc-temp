@@ -4,6 +4,8 @@ export type VisitStatus = 'scheduled' | 'in-window' | 'deviation'
 
 export type DayVisit = { patient: Patient; visit: Visit }
 
+export type TicksByVisit = { [visitNumber: number]: string[] }
+
 export function parseISO(iso: string): Date {
   const [year, month, day] = iso.split('-').map(Number)
   return new Date(year, month - 1, day, 12)
@@ -52,12 +54,40 @@ export function orderVisits(visits: TimelineVisit[]): TimelineVisit[] {
     .map((visit, index) => ({ ...visit, visitNumber: index + 1 }))
 }
 
-export function fixedStepVisits(count: number, everyWeeks: number, window: number): TimelineVisit[] {
+export function fixedStepVisits(
+  count: number,
+  everyWeeks: number,
+  window: number,
+  ticks: TicksByVisit,
+): TimelineVisit[] {
   const visits: TimelineVisit[] = []
   for (let index = 0; index < count; index++) {
-    visits.push({ visitNumber: index + 1, week: index * everyWeeks, window, procedures: [] })
+    const visitNumber = index + 1
+    visits.push({ visitNumber, week: index * everyWeeks, window, procedures: ticks[visitNumber] ?? [] })
   }
   return visits
+}
+
+export function addProcedure(procedures: Procedure[], id: string): Procedure[] {
+  return [...procedures, { id, name: '' }]
+}
+
+export function renameProcedure(procedures: Procedure[], id: string, name: string): Procedure[] {
+  return procedures.map((procedure) => (procedure.id === id ? { ...procedure, name } : procedure))
+}
+
+export function removeProcedure(procedures: Procedure[], id: string): Procedure[] {
+  return procedures.filter((procedure) => procedure.id !== id)
+}
+
+export function toggleTick(procedureIds: string[], procedureId: string): string[] {
+  if (procedureIds.includes(procedureId)) return procedureIds.filter((id) => id !== procedureId)
+  return [...procedureIds, procedureId]
+}
+
+export function dropRemovedTicks(visits: TimelineVisit[], procedures: Procedure[]): TimelineVisit[] {
+  const listed = new Set(procedures.map((procedure) => procedure.id))
+  return visits.map((visit) => ({ ...visit, procedures: visit.procedures.filter((id) => listed.has(id)) }))
 }
 
 export function snapshotVisits(timeline: Timeline, anchorISO: string): Visit[] {
