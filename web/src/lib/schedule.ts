@@ -31,6 +31,20 @@ export function computeVisitDates(patientVisits: TimelineVisit[], anchorISO: str
   }))
 }
 
+export function orderVisits(visits: TimelineVisit[]): TimelineVisit[] {
+  return visits
+    .toSorted((a, b) => a.week - b.week)
+    .map((visit, index) => ({ ...visit, visitNumber: index + 1 }))
+}
+
+export function fixedStepVisits(count: number, everyWeeks: number, window: number): TimelineVisit[] {
+  const visits: TimelineVisit[] = []
+  for (let index = 0; index < count; index++) {
+    visits.push({ visitNumber: index + 1, week: index * everyWeeks, window, procedures: [] })
+  }
+  return visits
+}
+
 export function snapshotVisits(timeline: Timeline, anchorISO: string): Visit[] {
   return computeVisitDates(timeline.visits, anchorISO)
 }
@@ -70,4 +84,14 @@ export function recordActual(visit: Visit, dateISO: string | null): Visit {
   if (dateISO) updated.actualDate = dateISO
   else delete updated.actualDate
   return updated
+}
+
+function goldenAngleColor(n: number): string {
+  return `hsl(${(n * 137.5) % 360} 70% 50%)`
+}
+
+export function nextColor(usedColors: (string | null)[]): string {
+  let n = 0
+  while (n < usedColors.length && usedColors.includes(goldenAngleColor(n))) n++
+  return goldenAngleColor(n)
 }
