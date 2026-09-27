@@ -2,20 +2,25 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   addDays,
+  addMonths,
   computeVisitDates,
   droppedRecords,
   fixedStepVisits,
+  monthGrid,
   nextColor,
   orderVisits,
   parseISO,
   recordActual,
   resnapshot,
   snapshotVisits,
+  startOfMonth,
   toISO,
+  visitsOn,
   visitStatus,
+  windowsOn,
   windowDates,
 } from './schedule.ts'
-import type { Timeline, TimelineVisit, Visit } from './types.ts'
+import type { Patient, Timeline, TimelineVisit, Visit } from './types.ts'
 
 const protocol: TimelineVisit[] = [
   { visitNumber: 1, week: 0, window: 3, procedures: ['p1'] },
@@ -39,6 +44,20 @@ function visitOn(targetDate: string, window: number, actualDate?: string): Visit
   const visit: Visit = { visitNumber: 1, week: 0, window, targetDate, procedures: [] }
   if (actualDate) visit.actualDate = actualDate
   return visit
+}
+
+function enrolled(name: string, visits: Visit[]): Patient {
+  return {
+    id: name,
+    user_id: 'u1',
+    name,
+    anchor_date: visits[0].targetDate,
+    source_timeline_id: 't1',
+    visits,
+    procedures: [],
+    note: null,
+    created_at: '2026-01-01T00:00:00Z',
+  }
 }
 
 test('parseISO lands on the given calendar day at local noon', () => {
@@ -260,4 +279,109 @@ test('a fixed step makes evenly spaced visits from week 0', () => {
     [[1, 0, 2], [2, 3, 2], [3, 6, 2], [4, 9, 2]],
   )
   assert.deepEqual(visits[0].procedures, [])
+})
+
+test('the month on screen is kept as its 1st day', () => {
+  assert.equal(startOfMonth('2026-09-27'), '2026-09-01')
+})
+
+test('the month after 31 January is February, not March', () => {
+  assert.equal(addMonths('2026-01-31', 1), '2026-02-01')
+})
+
+test('stepping a month crosses the new year both ways', () => {
+  assert.equal(addMonths('2026-12-01', 1), '2027-01-01')
+  assert.equal(addMonths('2027-01-01', -1), '2026-12-01')
+})
+
+test('the grid opens on the Monday before the 1st', () => {
+  const days = monthGrid('2026-09-01')
+  assert.equal(days[0], '2026-08-31')
+  assert.equal(days[1], '2026-09-01')
+})
+
+test('a month that starts on a Sunday has six days of the month before', () => {
+  const days = monthGrid('2026-02-01')
+  assert.equal(days[0], '2026-01-26')
+  assert.equal(days[6], '2026-02-01')
+})
+
+test('a month that starts on a Monday opens on its 1st', () => {
+  assert.equal(monthGrid('2027-02-01')[0], '2027-02-01')
+})
+
+test('a four-week February and a six-week August are both drawn as six weeks', () => {
+  const february = monthGrid('2027-02-01')
+  const august = monthGrid('2026-08-01')
+  assert.equal(february.length, 42)
+  assert.equal(february[41], '2027-03-14')
+  assert.equal(august.length, 42)
+  assert.equal(august[41], '2026-09-06')
+})
+
+test('grid days run on without a gap or a repeat across the March daylight saving change', () => {
+  assert.deepEqual(monthGrid('2026-03-01').slice(33, 36), ['2026-03-28', '2026-03-29', '2026-03-30'])
+})
+
+test('grid days run on without a gap or a repeat across the October daylight saving change', () => {
+  assert.deepEqual(monthGrid('2026-10-01').slice(26, 29), ['2026-10-24', '2026-10-25', '2026-10-26'])
+})
+
+test('a day lists every visit targeted on it, in the order the patients come', () => {
+  const zoe = enrolled('Zoe', [visitOn('2026-10-01', 3), { ...visitOn('2026-10-14', 3), visitNumber: 2 }])
+  const adam = enrolled('Adam', [visitOn('2026-10-14', 3)])
+  assert.deepEqual(
+    visitsOn([zoe, adam], '2026-10-14').map((found) => [found.patient.name, found.visit.visitNumber]),
+    [['Zoe', 2], ['Adam', 1]],
+  )
+  assert.deepEqual(visitsOn([zoe, adam], '2026-10-15'), [])
+})
+
+test('a visit sits on its target day, not on the day it was attended', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-16')])
+  assert.equal(visitsOn([patient], '2026-10-14').length, 1)
+  assert.equal(visitsOn([patient], '2026-10-16').length, 0)
+})
+
+test('a window day lists the visit whose days either side of the target cover it, edges included', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3)])
+  assert.equal(windowsOn([patient], '2026-10-11').length, 1)
+  assert.equal(windowsOn([patient], '2026-10-17').length, 1)
+  assert.equal(windowsOn([patient], '2026-10-10').length, 0)
+  assert.equal(windowsOn([patient], '2026-10-18').length, 0)
+})
+
+test('the target day itself is not a window day', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 3)])
+  assert.deepEqual(windowsOn([patient], '2026-10-14'), [])
+})
+
+test('a visit with no window has no window days', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-14', 0)])
+  assert.deepEqual(windowsOn([patient], '2026-10-13'), [])
+  assert.deepEqual(windowsOn([patient], '2026-10-15'), [])
+})
+
+test('two overlapping windows of one patient both show, and neither shows on their target days', () => {
+  const zoe = enrolled('Zoe', [visitOn('2026-10-07', 7), { ...visitOn('2026-10-14', 7), visitNumber: 2 }])
+  assert.deepEqual(
+    windowsOn([zoe], '2026-10-10').map((found) => found.visit.visitNumber),
+    [1, 2],
+  )
+  assert.deepEqual(windowsOn([zoe], '2026-10-14'), [])
+})
+
+test("another patient's target day still shows this patient's window", () => {
+  const zoe = enrolled('Zoe', [visitOn('2026-10-14', 3)])
+  const adam = enrolled('Adam', [visitOn('2026-10-12', 3)])
+  assert.deepEqual(
+    windowsOn([zoe, adam], '2026-10-14').map((found) => found.patient.name),
+    ['Adam'],
+  )
+})
+
+test('a window runs on across the October daylight saving change', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-10-24', 3)])
+  assert.equal(windowsOn([patient], '2026-10-27').length, 1)
+  assert.equal(windowsOn([patient], '2026-10-28').length, 0)
 })

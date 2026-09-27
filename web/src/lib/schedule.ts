@@ -1,6 +1,8 @@
-import type { Timeline, TimelineVisit, Visit } from './types.ts'
+import type { Patient, Timeline, TimelineVisit, Visit } from './types.ts'
 
 export type VisitStatus = 'scheduled' | 'in-window' | 'deviation'
+
+export type DayVisit = { patient: Patient; visit: Visit }
 
 export function parseISO(iso: string): Date {
   const [year, month, day] = iso.split('-').map(Number)
@@ -12,6 +14,15 @@ export function toISO(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+export function longDate(iso: string): string {
+  return parseISO(iso).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -92,6 +103,48 @@ export function recordActual(visit: Visit, dateISO: string | null): Visit {
   if (dateISO) updated.actualDate = dateISO
   else delete updated.actualDate
   return updated
+}
+
+export function startOfMonth(iso: string): string {
+  return `${iso.slice(0, 7)}-01`
+}
+
+export function addMonths(monthISO: string, months: number): string {
+  const date = parseISO(monthISO)
+  return toISO(new Date(date.getFullYear(), date.getMonth() + months, 1, 12))
+}
+
+export function monthGrid(monthISO: string): string[] {
+  const first = parseISO(monthISO)
+  const daysBefore = first.getDay() === 0 ? 6 : first.getDay() - 1
+  const start = addDays(first, -daysBefore)
+  const days: string[] = []
+  for (let index = 0; index < 42; index++) {
+    days.push(toISO(addDays(start, index)))
+  }
+  return days
+}
+
+export function visitsOn(patients: Patient[], dayISO: string): DayVisit[] {
+  const found: DayVisit[] = []
+  for (const patient of patients) {
+    for (const visit of patient.visits) {
+      if (visit.targetDate === dayISO) found.push({ patient, visit })
+    }
+  }
+  return found
+}
+
+export function windowsOn(patients: Patient[], dayISO: string): DayVisit[] {
+  const found: DayVisit[] = []
+  for (const patient of patients) {
+    if (patient.visits.some((visit) => visit.targetDate === dayISO)) continue
+    for (const visit of patient.visits) {
+      const { from, to } = windowDates(visit)
+      if (from <= dayISO && dayISO <= to) found.push({ patient, visit })
+    }
+  }
+  return found
 }
 
 function goldenAngleColor(n: number): string {

@@ -3,6 +3,7 @@ import type { SubmitEvent } from 'react'
 import {
   computeVisitDates,
   fixedStepVisits,
+  longDate,
   nextColor,
   orderVisits,
   parseISO,
@@ -53,15 +54,6 @@ function toRow(visit: TimelineVisit): Row {
 
 function toVisit(row: Row, index: number): TimelineVisit {
   return { visitNumber: index + 1, week: Number(row.week), window: Number(row.window), procedures: [] }
-}
-
-function longDate(iso: string): string {
-  return parseISO(iso).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
 }
 
 function shortDate(iso: string): string {
