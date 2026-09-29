@@ -23,14 +23,16 @@ export default function Layout() {
   const loadTimelines = useStore((state) => state.loadTimelines)
   const loadPatients = useStore((state) => state.loadPatients)
   const loadProcedureSets = useStore((state) => state.loadProcedureSets)
+  const loadSavedArticles = useStore((state) => state.loadSavedArticles)
   const clear = useStore((state) => state.clear)
 
   useEffect(() => {
     loadTimelines()
     loadPatients()
     loadProcedureSets()
+    loadSavedArticles()
     return () => clear()
-  }, [loadTimelines, loadPatients, loadProcedureSets, clear])
+  }, [loadTimelines, loadPatients, loadProcedureSets, loadSavedArticles, clear])
 
   return (
     <div className="flex min-h-screen flex-col">

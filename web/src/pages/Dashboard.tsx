@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import Markup from '../components/Markup.tsx'
 import { addDays, addMonths, longDate, parseISO, shortDate, startOfMonth, toISO, visitStatus, windowDates } from '../lib/schedule.ts'
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
@@ -25,6 +26,9 @@ export default function Dashboard() {
   const patients = useStore((state) => state.patients)
   const patientsStatus = useStore((state) => state.patientsStatus)
   const loadPatients = useStore((state) => state.loadPatients)
+  const savedArticles = useStore((state) => state.savedArticles)
+  const savedArticlesStatus = useStore((state) => state.savedArticlesStatus)
+  const loadSavedArticles = useStore((state) => state.loadSavedArticles)
 
   const [allOverdue, setAllOverdue] = useState(false)
   const [allDeviations, setAllDeviations] = useState(false)
@@ -198,6 +202,38 @@ export default function Dashboard() {
             )}
             <Link to="/patients" className={linkClass}>
               Open the Patients page
+            </Link>
+          </section>
+
+          <section className={cardClass}>
+            <h2 className="text-lg font-semibold">Recently saved</h2>
+            {(savedArticlesStatus === 'idle' || savedArticlesStatus === 'loading') && (
+              <p className="text-sm text-slate-500">Loading saved articles…</p>
+            )}
+            {savedArticlesStatus === 'error' && (
+              <>
+                <p className="text-sm text-red-600">Couldn't load your saved articles.</p>
+                <button onClick={loadSavedArticles} className={`block ${secondaryButtonClass}`}>
+                  Try again
+                </button>
+              </>
+            )}
+            {savedArticlesStatus === 'ready' && savedArticles.length === 0 && (
+              <p className="text-sm text-slate-500">Nothing saved yet.</p>
+            )}
+            {savedArticlesStatus === 'ready' && savedArticles.length > 0 && (
+              <ul className="divide-y divide-slate-100">
+                {savedArticles.slice(0, 3).map((article) => (
+                  <li key={article.id} className="py-1.5 text-sm">
+                    <p className="line-clamp-2 break-words">
+                      <Markup html={article.title} />
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/studies" className={linkClass}>
+              Open the Studies page
             </Link>
           </section>
         </div>
