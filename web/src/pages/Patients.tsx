@@ -16,7 +16,7 @@ import {
 import { useStore } from '../lib/store.ts'
 import type { PatientChanges } from '../lib/store.ts'
 import type { Patient, Visit } from '../lib/types.ts'
-import { buttonClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
+import { buttonClass, dotClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
 
 type OpenVisit = { patientId: string; visitNumber: number }
 
@@ -296,10 +296,7 @@ export default function Patients() {
               className={`space-y-3 rounded-xl border border-slate-200 p-5 shadow-sm ${isEditing ? 'ring-2 ring-slate-400' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="h-3 w-3 shrink-0 rounded-full bg-slate-300"
-                  style={{ backgroundColor: timeline?.color ?? undefined }}
-                />
+                <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
                 <h3 className="min-w-0 truncate font-semibold">{patient.name}</h3>
                 <span className="text-xs text-slate-500">{timeline ? timeline.name : 'no timeline'}</span>
                 <div className="ml-auto flex gap-2">

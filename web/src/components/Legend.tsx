@@ -1,5 +1,5 @@
 import type { Timeline } from '../lib/types.ts'
-import { attendedPillClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
+import { attendedPillClass, dotClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 const headingClass = 'mb-2 text-xs font-medium tracking-wide text-slate-500 uppercase'
 
@@ -13,15 +13,12 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
         <ul className="space-y-1.5">
           {timelines.map((timeline) => (
             <li key={timeline.id} className="flex items-center gap-2">
-              <span
-                className="h-3 w-3 shrink-0 rounded-full bg-slate-300"
-                style={{ backgroundColor: timeline.color ?? undefined }}
-              />
+              <span className={dotClass} style={{ backgroundColor: timeline.color ?? undefined }} />
               <span className="truncate text-slate-900">{timeline.name}</span>
             </li>
           ))}
           <li className="flex items-center gap-2">
-            <span className="h-3 w-3 shrink-0 rounded-full bg-slate-300" />
+            <span className={dotClass} />
             <span>No timeline</span>
           </li>
         </ul>

@@ -20,7 +20,7 @@ import {
 import type { TicksByVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
 import type { Procedure, Timeline, TimelineVisit } from '../lib/types.ts'
-import { buttonClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
+import { buttonClass, dotClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
 
 type Mode = 'fixed' | 'per-visit'
 
@@ -263,10 +263,7 @@ export default function Timelines() {
       >
         <div className="flex items-center gap-2">
           {(editing || timelinesStatus === 'ready') && (
-            <span
-              className="h-3 w-3 shrink-0 rounded-full bg-slate-300"
-              style={{ backgroundColor: formColor ?? undefined }}
-            />
+            <span className={dotClass} style={{ backgroundColor: formColor ?? undefined }} />
           )}
           <h2 className="text-lg font-semibold">{editing ? 'Edit timeline' : 'New timeline'}</h2>
         </div>
@@ -589,10 +586,7 @@ export default function Timelines() {
               className={`space-y-2 rounded-xl border border-slate-200 p-5 shadow-sm ${editing?.id === timeline.id ? 'ring-2 ring-slate-400' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="h-3 w-3 shrink-0 rounded-full bg-slate-300"
-                  style={{ backgroundColor: timeline.color ?? undefined }}
-                />
+                <span className={dotClass} style={{ backgroundColor: timeline.color ?? undefined }} />
                 <h3 className="min-w-0 truncate font-semibold">{timeline.name}</h3>
                 <span className="text-xs text-slate-500">
                   {timeline.visits.length} {timeline.visits.length === 1 ? 'visit' : 'visits'}
