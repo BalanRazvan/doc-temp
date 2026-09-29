@@ -9,6 +9,8 @@ export const secondaryButtonClass =
 
 export const labelClass = 'block text-sm font-medium text-slate-600'
 
+export const dotClass = 'h-3 w-3 shrink-0 rounded-full bg-slate-300'
+
 export const targetPillClass =
   'flex gap-1 rounded border border-slate-300 bg-slate-300 px-1.5 text-xs leading-5 font-medium text-slate-900'
 

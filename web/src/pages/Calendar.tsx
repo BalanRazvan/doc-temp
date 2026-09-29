@@ -20,7 +20,7 @@ import {
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
 import type { Patient, Visit } from '../lib/types.ts'
-import { attendedPillClass, secondaryButtonClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
+import { attendedPillClass, dotClass, secondaryButtonClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -41,6 +41,13 @@ function statusGlyph(visit: Visit) {
     )
   }
   return null
+}
+
+function windowStyle(color: string | undefined): CSSProperties {
+  return {
+    backgroundColor: color ? `color-mix(in srgb, ${color} 20%, white)` : undefined,
+    borderColor: color,
+  }
 }
 
 export default function Calendar() {
@@ -84,7 +91,7 @@ export default function Calendar() {
     }
     if (kind === 'window') {
       pillClass = windowPillClass
-      pillStyle = { backgroundColor: color ? `color-mix(in srgb, ${color} 20%, white)` : undefined, borderColor: color }
+      pillStyle = windowStyle(color)
       label = 'Window day'
     }
     const { from, to } = windowDates(visit)
@@ -280,22 +287,16 @@ export default function Calendar() {
                     <span className="shrink-0">· #{visit.visitNumber}</span>
                   </span>
                 ))}
-                {shownWindows.map(({ patient, visit }) => {
-                  const color = colorOf(patient)
-                  return (
-                    <span
-                      key={`${patient.id}-${visit.visitNumber}`}
-                      className={windowPillClass}
-                      style={{
-                        backgroundColor: color ? `color-mix(in srgb, ${color} 20%, white)` : undefined,
-                        borderColor: color,
-                      }}
-                    >
-                      <span className="truncate">{patient.name}</span>
-                      <span className="shrink-0">· #{visit.visitNumber}</span>
-                    </span>
-                  )
-                })}
+                {shownWindows.map(({ patient, visit }) => (
+                  <span
+                    key={`${patient.id}-${visit.visitNumber}`}
+                    className={windowPillClass}
+                    style={windowStyle(colorOf(patient))}
+                  >
+                    <span className="truncate">{patient.name}</span>
+                    <span className="shrink-0">· #{visit.visitNumber}</span>
+                  </span>
+                ))}
                 {hidden > 0 && <span className="px-1 text-xs leading-5 text-slate-500">+{hidden} more</span>}
               </button>
 
@@ -308,10 +309,7 @@ export default function Calendar() {
                 <ul className="max-h-[70vh] space-y-2 overflow-hidden text-sm text-slate-900">
                   {targets.map(({ patient, visit }) => (
                     <li key={`${patient.id}-${visit.visitNumber}`} className="flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 shrink-0 rounded-full bg-slate-300"
-                        style={{ backgroundColor: colorOf(patient) }}
-                      />
+                      <span className={dotClass} style={{ backgroundColor: colorOf(patient) }} />
                       <span className="truncate font-medium text-slate-900">{patient.name}</span>
                       <span className="shrink-0 text-slate-500">#{visit.visitNumber}</span>
                       {statusGlyph(visit)}
@@ -328,22 +326,16 @@ export default function Calendar() {
                       {statusGlyph(visit)}
                     </li>
                   ))}
-                  {windows.map(({ patient, visit }) => {
-                    const color = colorOf(patient)
-                    return (
-                      <li key={`${patient.id}-${visit.visitNumber}`} className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full border border-slate-300 bg-slate-100"
-                          style={{
-                            backgroundColor: color ? `color-mix(in srgb, ${color} 20%, white)` : undefined,
-                            borderColor: color,
-                          }}
-                        />
-                        <span className="truncate text-slate-700">{patient.name}</span>
-                        <span className="shrink-0 text-slate-500">#{visit.visitNumber} · window</span>
-                      </li>
-                    )
-                  })}
+                  {windows.map(({ patient, visit }) => (
+                    <li key={`${patient.id}-${visit.visitNumber}`} className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full border border-slate-300 bg-slate-100"
+                        style={windowStyle(colorOf(patient))}
+                      />
+                      <span className="truncate text-slate-700">{patient.name}</span>
+                      <span className="shrink-0 text-slate-500">#{visit.visitNumber} · window</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
