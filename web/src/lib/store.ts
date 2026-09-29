@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { supabase } from './supabase.ts'
-import type { Patient, Procedure, ProcedureSet, Timeline, TimelineVisit, Visit } from './types.ts'
+import type {
+  NewSavedArticle,
+  Patient,
+  Procedure,
+  ProcedureSet,
+  SavedArticle,
+  Timeline,
+  TimelineVisit,
+  Visit,
+} from './types.ts'
 
 export type Status = 'idle' | 'loading' | 'error' | 'ready'
 
@@ -44,6 +53,10 @@ export type ProcedureSetChanges = {
   procedures: string[]
 }
 
+export type SavedArticleChanges = {
+  note: string | null
+}
+
 type Store = {
   timelines: Timeline[]
   timelinesStatus: Status
@@ -63,6 +76,12 @@ type Store = {
   addProcedureSet: (procedureSet: NewProcedureSet) => Promise<string | null>
   updateProcedureSet: (id: string, changes: ProcedureSetChanges) => Promise<string | null>
   deleteProcedureSet: (id: string) => Promise<string | null>
+  savedArticles: SavedArticle[]
+  savedArticlesStatus: Status
+  loadSavedArticles: () => Promise<void>
+  addSavedArticle: (article: NewSavedArticle) => Promise<string | null>
+  updateSavedArticle: (id: string, changes: SavedArticleChanges) => Promise<string | null>
+  deleteSavedArticle: (id: string) => Promise<string | null>
   clear: () => void
 }
 
@@ -171,6 +190,39 @@ export const useStore = create<Store>((set) => ({
     return null
   },
 
+  savedArticles: [],
+  savedArticlesStatus: 'idle',
+
+  loadSavedArticles: async () => {
+    set({ savedArticlesStatus: 'loading' })
+    const result = await supabase.from('saved_articles').select().order('saved_at', { ascending: false })
+    if (result.error) set({ savedArticlesStatus: 'error' })
+    else set({ savedArticles: result.data, savedArticlesStatus: 'ready' })
+  },
+
+  addSavedArticle: async (article) => {
+    const result = await supabase.from('saved_articles').insert(article).select().single()
+    if (result.error) return result.error.message
+    set((state) => ({ savedArticles: [result.data, ...state.savedArticles] }))
+    return null
+  },
+
+  updateSavedArticle: async (id, changes) => {
+    const result = await supabase.from('saved_articles').update(changes).eq('id', id).select().single()
+    if (result.error) return result.error.message
+    set((state) => ({
+      savedArticles: state.savedArticles.map((article) => (article.id === id ? result.data : article)),
+    }))
+    return null
+  },
+
+  deleteSavedArticle: async (id) => {
+    const result = await supabase.from('saved_articles').delete().eq('id', id)
+    if (result.error) return result.error.message
+    set((state) => ({ savedArticles: state.savedArticles.filter((article) => article.id !== id) }))
+    return null
+  },
+
   clear: () =>
     set({
       timelines: [],
@@ -179,5 +231,7 @@ export const useStore = create<Store>((set) => ({
       patientsStatus: 'idle',
       procedureSets: [],
       procedureSetsStatus: 'idle',
+      savedArticles: [],
+      savedArticlesStatus: 'idle',
     }),
 }))

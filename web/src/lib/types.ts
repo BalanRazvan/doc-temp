@@ -64,3 +64,13 @@ export type SavedArticle = {
   note: string | null
   saved_at: string
 }
+
+export type NewSavedArticle = {
+  external_id: string
+  title: string
+  authors: string | null
+  journal: string | null
+  year: number | null
+  abstract: string | null
+  url: string
+}
