@@ -256,7 +256,7 @@ export default function Timelines() {
   }
 
   return (
-    <div className="grid items-start gap-6 p-6 lg:grid-cols-5">
+    <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-5">
       <form
         onSubmit={handleSubmit}
         className={`min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm lg:col-span-3 ${editing ? 'ring-2 ring-slate-400' : ''}`}
@@ -388,21 +388,26 @@ export default function Timelines() {
             <table className="w-full text-left text-sm tabular-nums">
               <thead className="text-slate-500">
                 <tr>
-                  <th className="py-1 font-medium">Visit</th>
-                  <th className="py-1 font-medium">Week</th>
-                  <th className="py-1 font-medium">Target</th>
-                  <th className="py-1 font-medium">Window</th>
+                  <th className="py-1 pr-3 font-medium">Visit</th>
+                  <th className="py-1 pr-3 font-medium">Week</th>
+                  <th className="py-1 pr-3 font-medium">Target</th>
+                  <th className="hidden py-1 pr-3 font-medium sm:table-cell">Window</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="align-baseline">
                 {preview.map((visit) => {
                   const { from, to } = windowDates(visit)
                   return (
                     <tr key={visit.visitNumber} className="border-t border-slate-100">
-                      <td className="py-1">#{visit.visitNumber}</td>
-                      <td className="py-1">{visit.week}</td>
-                      <td className="py-1">{longDate(visit.targetDate)}</td>
-                      <td className="py-1">
+                      <td className="py-1 pr-3">#{visit.visitNumber}</td>
+                      <td className="py-1 pr-3">{visit.week}</td>
+                      <td className="py-1 pr-3">
+                        {longDate(visit.targetDate)}
+                        <span className="block sm:hidden">
+                          <span className="text-slate-500">Window</span> {shortDate(from)} – {shortDate(to)}
+                        </span>
+                      </td>
+                      <td className="hidden py-1 pr-3 sm:table-cell">
                         {shortDate(from)} – {shortDate(to)}
                       </td>
                     </tr>
@@ -445,7 +450,7 @@ export default function Timelines() {
                             <td className="sticky left-0 border-t border-r border-slate-200 bg-white p-1">
                               <div className="flex items-center gap-1">
                                 <input
-                                  className="w-44 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                  className="w-44 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200 pointer-coarse:text-base"
                                   aria-label="Procedure name"
                                   placeholder="Procedure"
                                   value={procedure.name}
@@ -563,7 +568,7 @@ export default function Timelines() {
         </div>
       </form>
 
-      <section className="space-y-4 lg:col-span-2">
+      <section className="min-w-0 space-y-4 lg:col-span-2">
         {(timelinesStatus === 'idle' || timelinesStatus === 'loading') && (
           <p className="text-sm text-slate-500">Loading timelines…</p>
         )}

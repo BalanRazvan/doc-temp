@@ -38,16 +38,16 @@ export default function Layout() {
     <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 px-4 py-2">
         <span className="font-semibold">Doctor Schedule</span>
-        <nav className="flex flex-wrap gap-1">
+        <nav className="flex w-full flex-wrap items-center gap-1 lg:w-auto lg:flex-1">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end className={linkClass}>
               {link.label}
             </NavLink>
           ))}
+          <button onClick={() => supabase.auth.signOut()} className="ml-auto text-sm text-slate-600 hover:text-slate-900">
+            Sign out
+          </button>
         </nav>
-        <button onClick={() => supabase.auth.signOut()} className="ml-auto text-sm text-slate-600 hover:text-slate-900">
-          Sign out
-        </button>
       </header>
       <main className="flex flex-1 flex-col">
         <Outlet />

@@ -99,7 +99,7 @@ export default function Calendar() {
     return (
       <article
         key={`${patient.id}-${visit.visitNumber}`}
-        className="flex w-56 flex-col gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-900"
+        className="flex w-full flex-col gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-900 sm:w-56"
       >
         <div className="space-y-1">
           <span className={pillClass} style={pillStyle}>
@@ -108,7 +108,7 @@ export default function Calendar() {
             </span>
           </span>
           <p className="text-slate-500">{label}</p>
-          <p className="text-slate-700">{timelineOf(patient)?.name ?? 'No timeline'}</p>
+          <p className="break-words text-slate-700">{timelineOf(patient)?.name ?? 'No timeline'}</p>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
           <dt className="text-slate-500">Target</dt>
@@ -155,7 +155,7 @@ export default function Calendar() {
 
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
@@ -168,7 +168,7 @@ export default function Calendar() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-6 text-sm text-slate-500">Loading calendar…</p>
+    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading calendar…</p>
   }
 
   return (
@@ -212,9 +212,9 @@ export default function Calendar() {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-7 grid-rows-[auto_repeat(6,minmax(0,1fr))] gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 md:flex-1 md:grid-cols-7 md:grid-rows-[auto_repeat(6,minmax(0,1fr))]">
         {weekdays.map((weekday) => (
-          <div key={weekday} className="bg-white py-1.5 text-center text-xs font-medium text-slate-500">
+          <div key={weekday} className="hidden bg-white py-1.5 text-center text-xs font-medium text-slate-500 md:block">
             {weekday}
           </div>
         ))}
@@ -229,18 +229,22 @@ export default function Calendar() {
           const shownWindows = windows.slice(0, room - shownTargets.length - shownAttended.length)
           const hidden = total - shownTargets.length - shownAttended.length - shownWindows.length
           const inMonth = day.slice(0, 7) === month.slice(0, 7)
+          const dayClass = inMonth ? 'flex bg-white' : 'hidden bg-slate-50 md:flex'
           const dayNumber = (
-            <span
-              className={`flex h-6 min-w-6 items-center justify-center self-center rounded-full px-1.5 text-sm ${
-                day === today ? 'bg-slate-900 font-semibold text-white' : inMonth ? 'text-slate-700' : 'text-slate-400'
-              }`}
-            >
-              {parseISO(day).getDate()}
+            <span className="flex w-10 shrink-0 flex-col items-center md:w-auto md:self-center">
+              <span className="text-xs text-slate-500 md:hidden">{weekdays[index % 7]}</span>
+              <span
+                className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-sm ${
+                  day === today ? 'bg-slate-900 font-semibold text-white' : inMonth ? 'text-slate-700' : 'text-slate-400'
+                }`}
+              >
+                {parseISO(day).getDate()}
+              </span>
             </span>
           )
           if (total === 0) {
             return (
-              <div key={day} className={`flex flex-col p-1 ${inMonth ? 'bg-white' : 'bg-slate-50'}`}>
+              <div key={day} className={`flex-col p-1 ${dayClass}`}>
                 {dayNumber}
               </div>
             )
@@ -248,60 +252,60 @@ export default function Calendar() {
           return (
             <div
               key={day}
-              className={`group relative flex flex-col overflow-hidden hover:z-10 hover:shadow-lg hover:ring-2 hover:ring-slate-300 ${
-                inMonth ? 'bg-white' : 'bg-slate-50'
-              }`}
+              className={`group relative flex-col overflow-hidden hover:z-10 hover:shadow-lg hover:ring-2 hover:ring-slate-300 ${dayClass}`}
             >
               <button
                 onClick={() => setOpenDay(day)}
                 aria-label={`${longDate(day)}, ${total} ${total === 1 ? 'visit' : 'visits'}`}
-                className="flex min-h-0 flex-1 flex-col gap-0.5 p-1 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-slate-900"
+                className="flex min-h-0 flex-1 gap-2 p-1 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-slate-900 md:flex-col md:gap-0.5"
               >
                 {dayNumber}
-                {shownTargets.map(({ patient, visit }) => {
-                  const color = colorOf(patient)
-                  return (
+                <span className="flex min-w-0 flex-1 flex-wrap content-start gap-1 md:flex-col md:flex-nowrap md:gap-0.5">
+                  {shownTargets.map(({ patient, visit }) => {
+                    const color = colorOf(patient)
+                    return (
+                      <span
+                        key={`${patient.id}-${visit.visitNumber}`}
+                        className={targetPillClass}
+                        style={{
+                          backgroundColor: color,
+                          borderColor: color,
+                          color: color ? `contrast-color(${color})` : undefined,
+                        }}
+                      >
+                        {statusGlyph(visit)}
+                        <span className="truncate">{patient.name}</span>
+                        <span className="shrink-0">· #{visit.visitNumber}</span>
+                      </span>
+                    )
+                  })}
+                  {shownAttended.map(({ patient, visit }) => (
                     <span
                       key={`${patient.id}-${visit.visitNumber}`}
-                      className={targetPillClass}
-                      style={{
-                        backgroundColor: color,
-                        borderColor: color,
-                        color: color ? `contrast-color(${color})` : undefined,
-                      }}
+                      className={attendedPillClass}
+                      style={{ borderColor: colorOf(patient) }}
                     >
                       {statusGlyph(visit)}
                       <span className="truncate">{patient.name}</span>
                       <span className="shrink-0">· #{visit.visitNumber}</span>
                     </span>
-                  )
-                })}
-                {shownAttended.map(({ patient, visit }) => (
-                  <span
-                    key={`${patient.id}-${visit.visitNumber}`}
-                    className={attendedPillClass}
-                    style={{ borderColor: colorOf(patient) }}
-                  >
-                    {statusGlyph(visit)}
-                    <span className="truncate">{patient.name}</span>
-                    <span className="shrink-0">· #{visit.visitNumber}</span>
-                  </span>
-                ))}
-                {shownWindows.map(({ patient, visit }) => (
-                  <span
-                    key={`${patient.id}-${visit.visitNumber}`}
-                    className={windowPillClass}
-                    style={windowStyle(colorOf(patient))}
-                  >
-                    <span className="truncate">{patient.name}</span>
-                    <span className="shrink-0">· #{visit.visitNumber}</span>
-                  </span>
-                ))}
-                {hidden > 0 && <span className="px-1 text-xs leading-5 text-slate-500">+{hidden} more</span>}
+                  ))}
+                  {shownWindows.map(({ patient, visit }) => (
+                    <span
+                      key={`${patient.id}-${visit.visitNumber}`}
+                      className={windowPillClass}
+                      style={windowStyle(colorOf(patient))}
+                    >
+                      <span className="truncate">{patient.name}</span>
+                      <span className="shrink-0">· #{visit.visitNumber}</span>
+                    </span>
+                  ))}
+                  {hidden > 0 && <span className="px-1 text-xs leading-5 text-slate-500">+{hidden} more</span>}
+                </span>
               </button>
 
               <div
-                className={`pointer-events-none fixed top-1/2 z-20 hidden w-80 -translate-y-1/2 rounded-xl border border-slate-200 bg-white p-5 shadow-2xl group-hover:block ${
+                className={`pointer-events-none fixed top-1/2 z-20 hidden w-80 -translate-y-1/2 rounded-xl border border-slate-200 bg-white p-5 shadow-2xl md:group-hover:block ${
                   index % 7 < 4 ? 'right-6' : 'left-6'
                 }`}
               >

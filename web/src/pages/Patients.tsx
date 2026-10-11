@@ -199,7 +199,7 @@ export default function Patients() {
 
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
@@ -212,12 +212,12 @@ export default function Patients() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-6 text-sm text-slate-500">Loading patients…</p>
+    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading patients…</p>
   }
 
   return (
-    <div className="grid items-start gap-6 p-6 lg:grid-cols-[20rem_1fr]">
-      <form onSubmit={handleAdd} className="space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm">
+    <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-[20rem_1fr]">
+      <form onSubmit={handleAdd} className="min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold">New patient</h2>
         {timelines.length === 0 ? (
           <p className="text-sm text-slate-600">
@@ -282,7 +282,7 @@ export default function Patients() {
         )}
       </form>
 
-      <section className="space-y-4">
+      <section className="min-w-0 space-y-4">
         {listError && <p className="text-sm text-red-600">{listError}</p>}
         {patients.length === 0 && (
           <p className="text-sm text-slate-500">No patients yet. The ones you add appear here.</p>
@@ -298,7 +298,7 @@ export default function Patients() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
                 <h3 className="min-w-0 truncate font-semibold">{patient.name}</h3>
-                <span className="text-xs text-slate-500">{timeline ? timeline.name : 'no timeline'}</span>
+                <span className="min-w-0 text-xs break-words text-slate-500">{timeline ? timeline.name : 'no timeline'}</span>
                 <div className="ml-auto flex gap-2">
                   <button
                     onClick={() => (isEditing ? closeEditors() : startEdit(patient))}
@@ -312,7 +312,7 @@ export default function Patients() {
                 </div>
               </div>
               <p className="text-sm text-slate-600">First visit {longDate(patient.anchor_date)}</p>
-              {patient.note && <p className="text-sm text-slate-600">{patient.note}</p>}
+              {patient.note && <p className="text-sm break-words text-slate-600">{patient.note}</p>}
 
               {isEditing && (
                 <div className="space-y-4 rounded-lg bg-slate-50 p-4">
@@ -407,15 +407,15 @@ export default function Patients() {
                 <table className="w-full text-left text-sm tabular-nums">
                   <thead className="text-slate-500">
                     <tr>
-                      <th className="py-1 font-medium">Visit</th>
-                      <th className="py-1 font-medium">Target</th>
-                      <th className="py-1 font-medium">Window</th>
-                      <th className="py-1 font-medium">Attended</th>
+                      <th className="py-1 pr-3 font-medium">Visit</th>
+                      <th className="py-1 pr-3 font-medium">Target</th>
+                      <th className="hidden py-1 pr-3 font-medium sm:table-cell">Window</th>
+                      <th className="hidden py-1 pr-3 font-medium sm:table-cell">Attended</th>
                       <th className="py-1" />
                       <th className="py-1" />
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="align-baseline">
                     {patient.visits.map((visit) => {
                       const { from, to } = windowDates(visit)
                       const status = visitStatus(visit)
@@ -426,17 +426,29 @@ export default function Patients() {
                       return (
                         <Fragment key={visit.visitNumber}>
                           <tr className="border-t border-slate-100">
-                            <td className="py-1">#{visit.visitNumber}</td>
-                            <td className="py-1">{longDate(visit.targetDate)}</td>
-                            <td className="py-1">
+                            <td className="py-1 pr-3">#{visit.visitNumber}</td>
+                            <td className="py-1 pr-3">
+                              {longDate(visit.targetDate)}
+                              <span className="block sm:hidden">
+                                <span className="text-slate-500">Window</span> {shortDate(from)} – {shortDate(to)}
+                              </span>
+                              {visit.actualDate && (
+                                <span className="block sm:hidden">
+                                  <span className="text-slate-500">Attended</span> {longDate(visit.actualDate)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="hidden py-1 pr-3 sm:table-cell">
                               {shortDate(from)} – {shortDate(to)}
                             </td>
-                            <td className="py-1">{visit.actualDate ? longDate(visit.actualDate) : '—'}</td>
+                            <td className="hidden py-1 pr-3 sm:table-cell">
+                              {visit.actualDate ? longDate(visit.actualDate) : '—'}
+                            </td>
                             <td className="w-6 py-1 text-center">
                               {status === 'in-window' && <span title="In window">✓</span>}
                               {status === 'deviation' && <span title="Deviation: outside the window">⚠</span>}
                             </td>
-                            <td className="py-1 text-right">
+                            <td className="w-12 py-1 text-right">
                               <button
                                 onClick={() => (isOpen ? closeEditors() : startVisit(patient, visit))}
                                 className="text-sm font-medium text-slate-600 hover:text-slate-900"
@@ -448,7 +460,7 @@ export default function Patients() {
                           {visit.note && !isOpen && (
                             <tr>
                               <td />
-                              <td colSpan={5} className="pb-1 text-slate-600">
+                              <td colSpan={5} className="pb-1 wrap-anywhere text-slate-600">
                                 {visit.note}
                               </td>
                             </tr>

@@ -71,7 +71,7 @@ export default function ProcedureSets() {
   }
 
   return (
-    <div className="grid items-start gap-6 p-6 lg:grid-cols-2">
+    <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
       <form
         onSubmit={handleSubmit}
         className={`min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm ${editing ? 'ring-2 ring-slate-400' : ''}`}
@@ -121,7 +121,7 @@ export default function ProcedureSets() {
         </div>
       </form>
 
-      <section className="space-y-4">
+      <section className="min-w-0 space-y-4">
         {(procedureSetsStatus === 'idle' || procedureSetsStatus === 'loading') && (
           <p className="text-sm text-slate-500">Loading procedure sets…</p>
         )}
@@ -157,7 +157,7 @@ export default function ProcedureSets() {
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-slate-600">{procedureSet.procedures.join(' · ')}</p>
+              <p className="text-sm break-words text-slate-600">{procedureSet.procedures.join(' · ')}</p>
             </article>
           ))}
       </section>
