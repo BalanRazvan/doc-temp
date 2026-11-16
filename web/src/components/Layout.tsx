@@ -11,6 +11,7 @@ const links = [
   { to: '/procedure-sets', label: 'Procedure sets' },
   { to: '/studies', label: 'Studies' },
   { to: '/guide', label: 'Guide' },
+  { to: '/backup', label: 'Backup' },
 ]
 
 function linkClass({ isActive }: { isActive: boolean }) {

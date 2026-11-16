@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import Layout from './components/Layout.tsx'
 import { supabase } from './lib/supabase.ts'
 import Auth from './pages/Auth.tsx'
+import Backup from './pages/Backup.tsx'
 import Calendar from './pages/Calendar.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Landing from './pages/Landing.tsx'
@@ -41,6 +42,7 @@ function App() {
             <Route path="/procedure-sets" element={<ProcedureSets />} />
             <Route path="/studies" element={<Studies />} />
             <Route path="/guide" element={<UserGuide />} />
+            <Route path="/backup" element={<Backup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

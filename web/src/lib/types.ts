@@ -74,3 +74,41 @@ export type NewSavedArticle = {
   abstract: string | null
   url: string
 }
+
+export type BackupTimeline = {
+  id: string
+  name: string
+  color: string | null
+  visits: TimelineVisit[]
+  procedures: Procedure[]
+  created_at: string
+}
+
+export type BackupPatient = {
+  name: string
+  anchor_date: string
+  source_timeline_id: string | null
+  visits: Visit[]
+  procedures: Procedure[]
+  note: string | null
+  created_at: string
+}
+
+export type BackupProcedureSet = {
+  name: string
+  procedures: string[]
+  created_at: string
+}
+
+export type BackupSavedArticle = {
+  source: string
+  external_id: string
+  title: string
+  authors: string | null
+  journal: string | null
+  year: number | null
+  abstract: string | null
+  url: string | null
+  note: string | null
+  saved_at: string
+}
