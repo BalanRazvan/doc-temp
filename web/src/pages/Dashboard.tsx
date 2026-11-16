@@ -52,9 +52,9 @@ export default function Dashboard() {
         )}
         <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-          <span className="font-medium break-words">{patient.name}</span>
+          <span className="min-w-0 font-medium break-words">{patient.name}</span>
           <span className="text-slate-500">#{visit.visitNumber}</span>
-          <span className="text-slate-500">{timeline?.name ?? 'No timeline'}</span>
+          <span className="min-w-0 break-words text-slate-500">{timeline?.name ?? 'No timeline'}</span>
           <span className="ml-auto text-slate-700">
             {visit.actualDate && `attended ${shortDate(visit.actualDate)} · window `}
             {shortDate(from)} – {shortDate(to)}
@@ -66,7 +66,7 @@ export default function Dashboard() {
 
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
@@ -79,7 +79,7 @@ export default function Dashboard() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-6 text-sm text-slate-500">Loading dashboard…</p>
+    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading dashboard…</p>
   }
 
   const summary = buildSummary(patients, timelines, today)
@@ -88,7 +88,7 @@ export default function Dashboard() {
   const deviations = allDeviations ? summary.deviations : summary.deviations.slice(0, shownAtFirst)
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-slate-600">{longDate(today)}</p>
@@ -103,7 +103,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className={cardClass}>
             <h2 className="text-lg font-semibold">Needs attention</h2>
             <h3 className="text-sm font-medium text-slate-600">Closing soon · {summary.closingSoon.length}</h3>
@@ -170,7 +170,7 @@ export default function Dashboard() {
           </section>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className={cardClass}>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <h2 className="text-lg font-semibold">This week</h2>

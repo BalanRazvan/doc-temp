@@ -27,7 +27,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-4 p-6">
+    <div className="w-full max-w-sm space-y-4 p-4 sm:p-6">
       <h1 className="text-lg font-semibold">Choose a new password</h1>
       <form onSubmit={handleSubmit} className="space-y-3">
         <input

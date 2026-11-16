@@ -135,7 +135,7 @@ export default function Studies() {
   }
 
   return (
-    <div className="grid items-start gap-6 p-6 lg:grid-cols-2">
+    <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
       <div className="min-w-0 space-y-4">
         <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Search Europe PMC</h2>
