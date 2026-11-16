@@ -45,7 +45,7 @@ function statusGlyph(visit: Visit) {
 
 function windowStyle(color: string | undefined): CSSProperties {
   return {
-    backgroundColor: color ? `color-mix(in srgb, ${color} 20%, white)` : undefined,
+    backgroundColor: color ? `color-mix(in srgb, ${color} 20%, var(--color-white))` : undefined,
     borderColor: color,
   }
 }
@@ -354,7 +354,7 @@ export default function Calendar() {
         onClick={(event) => {
           if (event.target === event.currentTarget) dialogRef.current?.close()
         }}
-        className="m-auto max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white shadow-2xl backdrop:bg-slate-900/20"
+        className="m-auto max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white shadow-2xl backdrop:bg-black/20"
       >
         {openDay && (
           <>

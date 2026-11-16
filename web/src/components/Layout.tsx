@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { useStore } from '../lib/store.ts'
 import { supabase } from '../lib/supabase.ts'
@@ -26,6 +26,7 @@ export default function Layout() {
   const loadProcedureSets = useStore((state) => state.loadProcedureSets)
   const loadSavedArticles = useStore((state) => state.loadSavedArticles)
   const clear = useStore((state) => state.clear)
+  const [dark, setDark] = useState(document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
     loadTimelines()
@@ -34,6 +35,14 @@ export default function Layout() {
     loadSavedArticles()
     return () => clear()
   }, [loadTimelines, loadPatients, loadProcedureSets, loadSavedArticles, clear])
+
+  function toggleDark() {
+    document.documentElement.classList.toggle('dark', !dark)
+    try {
+      localStorage.setItem('theme', dark ? 'light' : 'dark')
+    } catch {}
+    setDark(!dark)
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -45,9 +54,19 @@ export default function Layout() {
               {link.label}
             </NavLink>
           ))}
-          <button onClick={() => supabase.auth.signOut()} className="ml-auto text-sm text-slate-600 hover:text-slate-900">
-            Sign out
-          </button>
+          <div className="ml-auto flex items-center gap-4">
+            <button
+              onClick={toggleDark}
+              aria-label="Dark mode"
+              aria-pressed={dark}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-sm hover:bg-slate-50"
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <button onClick={() => supabase.auth.signOut()} className="text-sm text-slate-600 hover:text-slate-900">
+              Sign out
+            </button>
+          </div>
         </nav>
       </header>
       <main className="flex flex-1 flex-col">

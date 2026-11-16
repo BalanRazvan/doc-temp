@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+body {
+  background-color: var(--color-white);
+}
+
+.dark {
+  color-scheme: dark;
+  --color-white: oklch(20.8% 0.042 265.755);
+  --color-slate-50: oklch(27.9% 0.041 260.031);
+  --color-slate-100: oklch(27.9% 0.041 260.031);
+  --color-slate-200: oklch(37.2% 0.044 257.287);
+  --color-slate-300: oklch(44.6% 0.043 257.281);
+  --color-slate-400: oklch(55.4% 0.046 257.417);
+  --color-slate-500: oklch(70.4% 0.04 256.788);
+  --color-slate-600: oklch(86.9% 0.022 252.894);
+  --color-slate-700: oklch(92.9% 0.013 255.508);
+  --color-slate-800: oklch(96.8% 0.007 247.896);
+  --color-slate-900: oklch(98.4% 0.003 247.858);
+  --color-slate-950: #fff;
+  --color-red-600: oklch(70.4% 0.191 22.216);
+}
