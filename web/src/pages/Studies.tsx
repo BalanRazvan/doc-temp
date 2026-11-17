@@ -12,7 +12,7 @@ const searchDelay = 400
 
 const searchTimeout = 20000
 
-const cardClass = 'space-y-2 rounded-xl border border-slate-200 p-5 break-words shadow-sm'
+const cardClass = 'space-y-2 rounded-xl border border-slate-200 bg-surface p-5 break-words shadow-sm transition-shadow'
 
 const linkClass = 'text-sm font-medium text-slate-900 underline'
 
@@ -137,7 +137,7 @@ export default function Studies() {
   return (
     <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
       <div className="min-w-0 space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-200 p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-200 bg-surface p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Search Europe PMC</h2>
           <div className="flex gap-2">
             <input
@@ -175,8 +175,8 @@ export default function Studies() {
             )}
             {article.abstract ? (
               <details>
-                <summary className="cursor-pointer text-sm font-medium text-slate-700">Abstract</summary>
-                <div className="mt-2 text-sm leading-relaxed text-slate-700"><Markup html={article.abstract} /></div>
+                <summary className="cursor-pointer text-sm font-medium text-slate-700 transition-colors hover:text-slate-900">Abstract</summary>
+                <div className="mt-2 text-sm leading-relaxed text-slate-700 transition-opacity starting:opacity-0"><Markup html={article.abstract} /></div>
               </details>
             ) : (
               <p className="text-sm text-slate-500">No abstract.</p>
@@ -206,10 +206,10 @@ export default function Studies() {
       <section className="min-w-0 space-y-4">
         <h2 className="text-lg font-semibold">Saved articles</h2>
         {(savedArticlesStatus === 'idle' || savedArticlesStatus === 'loading') && (
-          <p className="text-sm text-slate-500">Loading your saved articles…</p>
+          <p className="text-sm text-slate-500 motion-safe:animate-pulse">Loading your saved articles…</p>
         )}
         {savedArticlesStatus === 'error' && (
-          <div className="space-y-3 rounded-xl border border-slate-200 p-5">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
             <p className="text-sm text-red-600">Couldn't load your saved articles.</p>
             <button onClick={loadSavedArticles} className={secondaryButtonClass}>
               Try again
@@ -235,8 +235,8 @@ export default function Studies() {
               )}
               {article.abstract ? (
                 <details>
-                  <summary className="cursor-pointer text-sm font-medium text-slate-700">Abstract</summary>
-                  <div className="mt-2 text-sm leading-relaxed text-slate-700"><Markup html={article.abstract} /></div>
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700 transition-colors hover:text-slate-900">Abstract</summary>
+                  <div className="mt-2 text-sm leading-relaxed text-slate-700 transition-opacity starting:opacity-0"><Markup html={article.abstract} /></div>
                 </details>
               ) : (
                 <p className="text-sm text-slate-500">No abstract.</p>
@@ -244,7 +244,7 @@ export default function Studies() {
               {noteId === article.id ? (
                 <form
                   onSubmit={(event) => handleSaveNote(event, article)}
-                  className="space-y-2 rounded-lg bg-slate-50 p-3"
+                  className="space-y-2 rounded-lg bg-slate-50 p-3 transition-opacity starting:opacity-0"
                 >
                   <label className="block space-y-1">
                     <span className={labelClass}>Note</span>

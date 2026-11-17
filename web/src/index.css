@@ -1,22 +1,32 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface: #fff;
+}
+
 body {
   background-color: var(--color-white);
+  color: var(--color-slate-900);
+}
+
+::placeholder {
+  color: var(--color-slate-500);
 }
 
 .dark {
   color-scheme: dark;
-  --color-white: oklch(20.8% 0.042 265.755);
-  --color-slate-50: oklch(27.9% 0.041 260.031);
-  --color-slate-100: oklch(27.9% 0.041 260.031);
-  --color-slate-200: oklch(37.2% 0.044 257.287);
-  --color-slate-300: oklch(44.6% 0.043 257.281);
-  --color-slate-400: oklch(55.4% 0.046 257.417);
-  --color-slate-500: oklch(70.4% 0.04 256.788);
-  --color-slate-600: oklch(86.9% 0.022 252.894);
-  --color-slate-700: oklch(92.9% 0.013 255.508);
-  --color-slate-800: oklch(96.8% 0.007 247.896);
-  --color-slate-900: oklch(98.4% 0.003 247.858);
-  --color-slate-950: #fff;
+  --color-white: oklch(21.6% 0.006 56.043);
+  --color-surface: oklch(26.8% 0.007 34.298);
+  --color-slate-50: oklch(14.7% 0.004 49.25);
+  --color-slate-100: oklch(14.7% 0.004 49.25);
+  --color-slate-200: oklch(37.4% 0.01 67.558);
+  --color-slate-300: oklch(44.4% 0.011 73.639);
+  --color-slate-400: oklch(55.3% 0.013 58.071);
+  --color-slate-500: oklch(70.9% 0.01 56.259);
+  --color-slate-600: oklch(86.9% 0.005 56.366);
+  --color-slate-700: oklch(86.9% 0.005 56.366);
+  --color-slate-800: oklch(92.3% 0.003 48.717);
+  --color-slate-900: oklch(92.3% 0.003 48.717);
+  --color-slate-950: oklch(92.3% 0.003 48.717);
   --color-red-600: oklch(70.4% 0.191 22.216);
 }

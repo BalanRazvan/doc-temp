@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import Legend from '../components/Legend.tsx'
+import StatusBadge from '../components/StatusBadge.tsx'
 import {
   addMonths,
   attendedOn,
@@ -19,29 +20,10 @@ import {
 } from '../lib/schedule.ts'
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
-import type { Patient, Visit } from '../lib/types.ts'
+import type { Patient } from '../lib/types.ts'
 import { attendedPillClass, dotClass, secondaryButtonClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-function statusGlyph(visit: Visit) {
-  const status = visitStatus(visit)
-  if (status === 'in-window') {
-    return (
-      <span title="In window" className="shrink-0">
-        ✓
-      </span>
-    )
-  }
-  if (status === 'deviation') {
-    return (
-      <span title="Deviation: outside the window" className="shrink-0">
-        ⚠
-      </span>
-    )
-  }
-  return null
-}
 
 function windowStyle(color: string | undefined): CSSProperties {
   return {
@@ -96,17 +78,27 @@ export default function Calendar() {
     }
     const { from, to } = windowDates(visit)
     const procedures = plannedProcedures(patient, visit)
+    const status = visitStatus(visit)
+    let statusWords = 'Nothing recorded yet'
+    if (status === 'in-window') statusWords = 'In window'
+    if (status === 'deviation') statusWords = 'Deviation: outside the window'
     return (
       <article
         key={`${patient.id}-${visit.visitNumber}`}
-        className="flex w-full flex-col gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-900 sm:w-56"
+        className="flex w-full flex-col gap-3 rounded-lg border border-t-4 border-slate-200 border-t-slate-300 p-3 text-sm text-slate-900 sm:w-56"
+        style={{ borderTopColor: color }}
       >
         <div className="space-y-1">
           <span className={pillClass} style={pillStyle}>
             <span className="min-w-0 break-words">
-              {statusGlyph(visit)} {patient.name} <span className="whitespace-nowrap">· #{visit.visitNumber}</span>
+              <StatusBadge status={status} small /> {patient.name}{' '}
+              <span className="whitespace-nowrap">· #{visit.visitNumber}</span>
             </span>
           </span>
+          <p className="flex items-baseline gap-1.5 pt-1 text-slate-700">
+            <StatusBadge status={status} />
+            {statusWords}
+          </p>
           <p className="text-slate-500">{label}</p>
           <p className="break-words text-slate-700">{timelineOf(patient)?.name ?? 'No timeline'}</p>
         </div>
@@ -125,21 +117,24 @@ export default function Calendar() {
           )}
         </dl>
         <div>
-          <h3 className="mb-1 text-xs font-medium tracking-wide text-slate-500 uppercase">Procedures</h3>
+          <h3 className="mb-1 text-xs font-medium tracking-wide text-slate-500 uppercase">
+            Procedures{procedures.length > 0 && ` · ${procedures.length}`}
+          </h3>
           {procedures.length === 0 ? (
             <p className="text-slate-500">None planned</p>
           ) : (
             <ul className="space-y-0.5">
               {procedures.map((procedure) => (
-                <li key={procedure.id} className="break-words">
-                  {procedure.name}
+                <li key={procedure.id} className="flex items-baseline gap-2">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" style={{ backgroundColor: color }} />
+                  <span className="min-w-0 break-words">{procedure.name}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
         {visit.note && (
-          <p className="break-words text-slate-700">
+          <p className="rounded-md bg-slate-50 px-2 py-1.5 break-words text-slate-700">
             <span className="text-slate-500">Note: </span>
             {visit.note}
           </p>
@@ -156,7 +151,7 @@ export default function Calendar() {
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
       <div className="p-4 sm:p-6">
-        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
+        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
           <button onClick={retry} className={secondaryButtonClass}>
@@ -168,24 +163,33 @@ export default function Calendar() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading calendar…</p>
+    return <p className="p-4 text-sm text-slate-500 motion-safe:animate-pulse sm:p-6">Loading calendar…</p>
   }
+
+  const openTargets = openDay ? visitsOn(patients, openDay) : []
+  const openAttended = openDay ? attendedOn(patients, openDay) : []
+  const openWindows = openDay ? windowsOn(patients, openDay) : []
+  const openTotal = openTargets.length + openAttended.length + openWindows.length
 
   return (
     <div className="flex flex-1 flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1">
+        <div className="flex">
           <button
             onClick={() => setMonth(addMonths(month, -1))}
             aria-label="Previous month"
-            className={secondaryButtonClass}
+            className={`${secondaryButtonClass} rounded-r-none`}
           >
             ‹
           </button>
-          <button onClick={() => setMonth(startOfMonth(today))} className={secondaryButtonClass}>
+          <button onClick={() => setMonth(startOfMonth(today))} className={`${secondaryButtonClass} -ml-px rounded-none`}>
             Today
           </button>
-          <button onClick={() => setMonth(addMonths(month, 1))} aria-label="Next month" className={secondaryButtonClass}>
+          <button
+            onClick={() => setMonth(addMonths(month, 1))}
+            aria-label="Next month"
+            className={`${secondaryButtonClass} -ml-px rounded-l-none`}
+          >
             ›
           </button>
         </div>
@@ -206,7 +210,7 @@ export default function Calendar() {
         <div
           id="legend"
           popover="auto"
-          className="m-auto max-h-[85vh] w-80 rounded-xl border border-slate-200 bg-white p-5 shadow-2xl"
+          className="m-auto max-h-[85vh] w-80 rounded-xl border border-slate-200 bg-surface p-5 shadow-2xl transition-[opacity,scale] starting:open:opacity-0 motion-safe:starting:open:scale-98"
         >
           <Legend timelines={timelines} />
         </div>
@@ -252,7 +256,7 @@ export default function Calendar() {
           return (
             <div
               key={day}
-              className={`group relative flex-col overflow-hidden hover:z-10 hover:shadow-lg hover:ring-2 hover:ring-slate-300 ${dayClass}`}
+              className={`group relative flex-col overflow-hidden transition-shadow hover:z-10 hover:shadow-lg hover:ring-2 hover:ring-slate-300 active:bg-slate-50 ${dayClass}`}
             >
               <button
                 onClick={() => setOpenDay(day)}
@@ -273,7 +277,7 @@ export default function Calendar() {
                           color: color ? `contrast-color(${color})` : undefined,
                         }}
                       >
-                        {statusGlyph(visit)}
+                        <StatusBadge status={visitStatus(visit)} small />
                         <span className="truncate">{patient.name}</span>
                         <span className="shrink-0">· #{visit.visitNumber}</span>
                       </span>
@@ -285,7 +289,7 @@ export default function Calendar() {
                       className={attendedPillClass}
                       style={{ borderColor: colorOf(patient) }}
                     >
-                      {statusGlyph(visit)}
+                      <StatusBadge status={visitStatus(visit)} small />
                       <span className="truncate">{patient.name}</span>
                       <span className="shrink-0">· #{visit.visitNumber}</span>
                     </span>
@@ -305,7 +309,7 @@ export default function Calendar() {
               </button>
 
               <div
-                className={`pointer-events-none fixed top-1/2 z-20 hidden w-80 -translate-y-1/2 rounded-xl border border-slate-200 bg-white p-5 shadow-2xl md:group-hover:block ${
+                className={`pointer-events-none fixed top-1/2 z-20 hidden w-80 -translate-y-1/2 rounded-xl border border-slate-200 bg-surface p-5 shadow-2xl transition-opacity starting:opacity-0 md:group-hover:block md:group-hover:delay-100 ${
                   index % 7 < 4 ? 'right-6' : 'left-6'
                 }`}
               >
@@ -316,7 +320,7 @@ export default function Calendar() {
                       <span className={dotClass} style={{ backgroundColor: colorOf(patient) }} />
                       <span className="truncate font-medium text-slate-900">{patient.name}</span>
                       <span className="shrink-0 text-slate-500">#{visit.visitNumber}</span>
-                      {statusGlyph(visit)}
+                      <StatusBadge status={visitStatus(visit)} />
                     </li>
                   ))}
                   {attended.map(({ patient, visit }) => (
@@ -327,7 +331,7 @@ export default function Calendar() {
                       />
                       <span className="truncate font-medium text-slate-900">{patient.name}</span>
                       <span className="shrink-0 text-slate-500">#{visit.visitNumber} · attended</span>
-                      {statusGlyph(visit)}
+                      <StatusBadge status={visitStatus(visit)} />
                     </li>
                   ))}
                   {windows.map(({ patient, visit }) => (
@@ -354,22 +358,27 @@ export default function Calendar() {
         onClick={(event) => {
           if (event.target === event.currentTarget) dialogRef.current?.close()
         }}
-        className="m-auto max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white shadow-2xl backdrop:bg-black/20"
+        className="m-auto max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-surface shadow-2xl transition-[opacity,scale] backdrop:bg-black/20 backdrop:transition-opacity starting:open:opacity-0 motion-safe:starting:open:scale-98 starting:open:backdrop:opacity-0"
       >
         {openDay && (
           <>
-            <div className="sticky top-0 flex items-center gap-4 border-b border-slate-200 bg-white px-5 py-3">
-              <h2 id="day-heading" className="font-semibold text-slate-900">
-                {longDate(openDay)}
-              </h2>
+            <div className="sticky top-0 flex items-center gap-4 border-b border-slate-200 bg-surface px-5 py-3">
+              <div>
+                <h2 id="day-heading" className="font-semibold text-slate-900">
+                  {longDate(openDay)}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {openTotal} {openTotal === 1 ? 'visit' : 'visits'}
+                </p>
+              </div>
               <button onClick={() => dialogRef.current?.close()} className={`ml-auto ${secondaryButtonClass}`}>
                 Close
               </button>
             </div>
             <div className="flex max-w-[75.5rem] flex-wrap gap-3 p-5">
-              {visitsOn(patients, openDay).map((found) => dayCard('target', found))}
-              {attendedOn(patients, openDay).map((found) => dayCard('attended', found))}
-              {windowsOn(patients, openDay).map((found) => dayCard('window', found))}
+              {openTargets.map((found) => dayCard('target', found))}
+              {openAttended.map((found) => dayCard('attended', found))}
+              {openWindows.map((found) => dayCard('window', found))}
             </div>
           </>
         )}

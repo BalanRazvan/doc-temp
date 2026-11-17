@@ -1,4 +1,5 @@
 import type { Timeline } from '../lib/types.ts'
+import StatusBadge from './StatusBadge.tsx'
 import { attendedPillClass, dotClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 const headingClass = 'mb-2 text-xs font-medium tracking-wide text-slate-500 uppercase'
@@ -41,7 +42,8 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
           </li>
           <li className="flex items-center gap-3">
             <span className={`w-24 shrink-0 ${attendedPillClass}`}>
-              ✓ Name · #2
+              <StatusBadge status="in-window" small />
+              Name · #2
             </span>
             <span>Attended on this day, not on its target day</span>
           </li>
@@ -51,15 +53,19 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
       <section>
         <h3 className={headingClass}>Status</h3>
         <ul className="space-y-1.5">
-          <li className="flex gap-3">
-            <span className="w-4 shrink-0 text-center text-slate-900">✓</span>
+          <li className="flex items-center gap-3">
+            <span className="flex w-4 shrink-0 justify-center">
+              <StatusBadge status="in-window" />
+            </span>
             <span>Attended inside its window</span>
           </li>
-          <li className="flex gap-3">
-            <span className="w-4 shrink-0 text-center text-slate-900">⚠</span>
+          <li className="flex items-center gap-3">
+            <span className="flex w-4 shrink-0 justify-center">
+              <StatusBadge status="deviation" />
+            </span>
             <span>Deviation: attended outside its window</span>
           </li>
-          <li className="flex gap-3">
+          <li className="flex items-center gap-3">
             <span className="w-4 shrink-0" />
             <span>No mark: nothing recorded yet</span>
           </li>

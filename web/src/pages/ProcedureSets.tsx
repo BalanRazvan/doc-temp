@@ -74,7 +74,7 @@ export default function ProcedureSets() {
     <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
       <form
         onSubmit={handleSubmit}
-        className={`min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm ${editing ? 'ring-2 ring-slate-400' : ''}`}
+        className={`min-w-0 space-y-5 rounded-xl border border-slate-200 bg-surface p-6 shadow-sm transition-shadow ${editing ? 'ring-2 ring-slate-400' : ''}`}
       >
         <h2 className="text-lg font-semibold">{editing ? 'Edit procedure set' : 'New procedure set'}</h2>
 
@@ -123,10 +123,10 @@ export default function ProcedureSets() {
 
       <section className="min-w-0 space-y-4">
         {(procedureSetsStatus === 'idle' || procedureSetsStatus === 'loading') && (
-          <p className="text-sm text-slate-500">Loading procedure sets…</p>
+          <p className="text-sm text-slate-500 motion-safe:animate-pulse">Loading procedure sets…</p>
         )}
         {procedureSetsStatus === 'error' && (
-          <div className="space-y-3 rounded-xl border border-slate-200 p-5">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
             <p className="text-sm text-red-600">Couldn't load your procedure sets.</p>
             <button onClick={loadProcedureSets} className={secondaryButtonClass}>
               Try again
@@ -141,7 +141,7 @@ export default function ProcedureSets() {
           procedureSets.map((procedureSet) => (
             <article
               key={procedureSet.id}
-              className={`space-y-2 rounded-xl border border-slate-200 p-5 shadow-sm ${editing?.id === procedureSet.id ? 'ring-2 ring-slate-400' : ''}`}
+              className={`space-y-2 rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition-shadow ${editing?.id === procedureSet.id ? 'ring-2 ring-slate-400' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="min-w-0 truncate font-semibold">{procedureSet.name}</h3>
@@ -157,7 +157,13 @@ export default function ProcedureSets() {
                   </button>
                 </div>
               </div>
-              <p className="text-sm break-words text-slate-600">{procedureSet.procedures.join(' · ')}</p>
+              <ul className="flex flex-wrap gap-1">
+                {procedureSet.procedures.map((name) => (
+                  <li key={name} className="min-w-0 rounded bg-slate-100 px-1.5 text-xs leading-5 break-words text-slate-700">
+                    {name}
+                  </li>
+                ))}
+              </ul>
             </article>
           ))}
       </section>

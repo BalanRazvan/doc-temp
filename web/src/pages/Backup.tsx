@@ -6,7 +6,7 @@ import { useStore } from '../lib/store.ts'
 import { supabase } from '../lib/supabase.ts'
 import { buttonClass, secondaryButtonClass } from '../lib/ui.ts'
 
-const cardClass = 'space-y-3 rounded-xl border border-slate-200 p-5 shadow-sm'
+const cardClass = 'space-y-3 rounded-xl border border-slate-200 bg-surface p-5 shadow-sm'
 
 function count(timelines: number, patients: number, procedureSets: number, savedArticles: number): string {
   return [
@@ -124,7 +124,7 @@ export default function Backup() {
   ) {
     return (
       <div className="p-4 sm:p-6">
-        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
+        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
           {procedureSetsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your procedure sets.</p>}
@@ -144,7 +144,7 @@ export default function Backup() {
     procedureSetsStatus !== 'ready' ||
     savedArticlesStatus !== 'ready'
   ) {
-    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading your account…</p>
+    return <p className="p-4 text-sm text-slate-500 motion-safe:animate-pulse sm:p-6">Loading your account…</p>
   }
 
   const holds = count(timelines.length, patients.length, procedureSets.length, savedArticles.length)

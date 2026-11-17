@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import type { SubmitEvent } from 'react'
 import { Link } from 'react-router'
+import StatusBadge from '../components/StatusBadge.tsx'
 import {
   computeVisitDates,
   droppedRecords,
@@ -200,7 +201,7 @@ export default function Patients() {
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
       <div className="p-4 sm:p-6">
-        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
+        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
           <button onClick={retry} className={secondaryButtonClass}>
@@ -212,12 +213,12 @@ export default function Patients() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading patients…</p>
+    return <p className="p-4 text-sm text-slate-500 motion-safe:animate-pulse sm:p-6">Loading patients…</p>
   }
 
   return (
     <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-[20rem_1fr]">
-      <form onSubmit={handleAdd} className="min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm">
+      <form onSubmit={handleAdd} className="min-w-0 space-y-5 rounded-xl border border-slate-200 bg-surface p-6 shadow-sm">
         <h2 className="text-lg font-semibold">New patient</h2>
         {timelines.length === 0 ? (
           <p className="text-sm text-slate-600">
@@ -293,7 +294,7 @@ export default function Patients() {
           return (
             <article
               key={patient.id}
-              className={`space-y-3 rounded-xl border border-slate-200 p-5 shadow-sm ${isEditing ? 'ring-2 ring-slate-400' : ''}`}
+              className={`space-y-3 rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition-shadow ${isEditing ? 'ring-2 ring-slate-400' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
@@ -315,7 +316,7 @@ export default function Patients() {
               {patient.note && <p className="text-sm break-words text-slate-600">{patient.note}</p>}
 
               {isEditing && (
-                <div className="space-y-4 rounded-lg bg-slate-50 p-4">
+                <div className="space-y-4 rounded-lg bg-slate-50 p-4 transition-opacity starting:opacity-0">
                   <form onSubmit={(event) => handleSaveDetails(event, patient)} className="space-y-2">
                     <div className="grid gap-2 sm:grid-cols-2">
                       <label className="block space-y-1">
@@ -418,7 +419,6 @@ export default function Patients() {
                   <tbody className="align-baseline">
                     {patient.visits.map((visit) => {
                       const { from, to } = windowDates(visit)
-                      const status = visitStatus(visit)
                       const isOpen =
                         openVisit !== null &&
                         openVisit.patientId === patient.id &&
@@ -445,8 +445,7 @@ export default function Patients() {
                               {visit.actualDate ? longDate(visit.actualDate) : '—'}
                             </td>
                             <td className="w-6 py-1 text-center">
-                              {status === 'in-window' && <span title="In window">✓</span>}
-                              {status === 'deviation' && <span title="Deviation: outside the window">⚠</span>}
+                              <StatusBadge status={visitStatus(visit)} />
                             </td>
                             <td className="w-12 py-1 text-right">
                               <button
@@ -470,7 +469,7 @@ export default function Patients() {
                               <td colSpan={6} className="pb-3">
                                 <form
                                   onSubmit={(event) => handleSaveVisit(event, patient, visit)}
-                                  className="space-y-2 rounded-lg bg-slate-50 p-3"
+                                  className="space-y-2 rounded-lg bg-slate-50 p-3 transition-opacity starting:opacity-0"
                                 >
                                   <div className="flex flex-wrap items-end gap-2">
                                     <label className="block space-y-1">
