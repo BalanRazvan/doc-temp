@@ -56,7 +56,7 @@ export default function Auth() {
 
   return (
     <main className="grid min-h-screen place-items-center px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm">
+      <div className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 bg-surface p-6 shadow-sm">
         <h1 className="text-lg font-semibold">{titles[mode]}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-3">

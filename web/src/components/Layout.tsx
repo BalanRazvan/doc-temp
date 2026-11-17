@@ -16,8 +16,8 @@ const links = [
 
 function linkClass({ isActive }: { isActive: boolean }) {
   return isActive
-    ? 'rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-white'
-    : 'rounded-md px-3 py-1 text-sm font-medium text-slate-600 hover:text-slate-900'
+    ? 'rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-white transition-colors'
+    : 'rounded-md px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
 }
 
 export default function Layout() {

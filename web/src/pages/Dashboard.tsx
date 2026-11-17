@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import Markup from '../components/Markup.tsx'
+import StatusBadge from '../components/StatusBadge.tsx'
 import { addDays, addMonths, longDate, parseISO, shortDate, startOfMonth, toISO, visitStatus, windowDates } from '../lib/schedule.ts'
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
@@ -9,7 +10,7 @@ import { dotClass, secondaryButtonClass } from '../lib/ui.ts'
 
 const shownAtFirst = 5
 
-const cardClass = 'space-y-3 rounded-xl border border-slate-200 p-5 shadow-sm'
+const cardClass = 'space-y-3 rounded-xl border border-slate-200 bg-surface p-5 shadow-sm'
 
 const linkClass = 'inline-block text-sm font-medium text-slate-900 underline'
 
@@ -45,11 +46,7 @@ export default function Dashboard() {
     const { from, to } = windowDates(visit)
     return (
       <li key={`${patient.id}-${visit.visitNumber}`} className="flex items-baseline gap-2 py-1.5 text-sm">
-        {visitStatus(visit) === 'deviation' && (
-          <span title="Deviation: outside the window" className="shrink-0">
-            ⚠
-          </span>
-        )}
+        <StatusBadge status={visitStatus(visit)} />
         <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
           <span className="min-w-0 font-medium break-words">{patient.name}</span>
@@ -67,7 +64,7 @@ export default function Dashboard() {
   if (timelinesStatus === 'error' || patientsStatus === 'error') {
     return (
       <div className="p-4 sm:p-6">
-        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 p-5">
+        <div className="max-w-md space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
           {timelinesStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your timelines.</p>}
           {patientsStatus === 'error' && <p className="text-sm text-red-600">Couldn't load your patients.</p>}
           <button onClick={retry} className={secondaryButtonClass}>
@@ -79,7 +76,7 @@ export default function Dashboard() {
   }
 
   if (timelinesStatus !== 'ready' || patientsStatus !== 'ready') {
-    return <p className="p-4 text-sm text-slate-500 sm:p-6">Loading dashboard…</p>
+    return <p className="p-4 text-sm text-slate-500 motion-safe:animate-pulse sm:p-6">Loading dashboard…</p>
   }
 
   const summary = buildSummary(patients, timelines, today)
@@ -208,7 +205,7 @@ export default function Dashboard() {
           <section className={cardClass}>
             <h2 className="text-lg font-semibold">Recently saved</h2>
             {(savedArticlesStatus === 'idle' || savedArticlesStatus === 'loading') && (
-              <p className="text-sm text-slate-500">Loading saved articles…</p>
+              <p className="text-sm text-slate-500 motion-safe:animate-pulse">Loading saved articles…</p>
             )}
             {savedArticlesStatus === 'error' && (
               <>

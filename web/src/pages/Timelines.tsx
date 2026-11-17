@@ -79,7 +79,7 @@ function toVisit(row: Row, index: number): TimelineVisit {
 
 function modeClass(active: boolean): string {
   return active
-    ? 'flex-1 rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm'
+    ? 'flex-1 rounded-md bg-surface px-3 py-1.5 text-slate-900 shadow-sm'
     : 'flex-1 rounded-md px-3 py-1.5 text-slate-500 hover:text-slate-900'
 }
 
@@ -259,7 +259,7 @@ export default function Timelines() {
     <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-5">
       <form
         onSubmit={handleSubmit}
-        className={`min-w-0 space-y-5 rounded-xl border border-slate-200 p-6 shadow-sm lg:col-span-3 ${editing ? 'ring-2 ring-slate-400' : ''}`}
+        className={`min-w-0 space-y-5 rounded-xl border border-slate-200 bg-surface p-6 shadow-sm transition-shadow lg:col-span-3 ${editing ? 'ring-2 ring-slate-400' : ''}`}
       >
         <div className="flex items-center gap-2">
           {(editing || timelinesStatus === 'ready') && (
@@ -429,7 +429,7 @@ export default function Timelines() {
                   <table className="border-separate border-spacing-0 text-sm">
                     <thead>
                       <tr>
-                        <th className="sticky left-0 border-r border-slate-200 bg-white" />
+                        <th className="sticky left-0 border-r border-slate-200 bg-surface" />
                         {visits.map((visit) => (
                           <th
                             key={visit.visitNumber}
@@ -447,7 +447,7 @@ export default function Timelines() {
                         const label = procedure.name.trim() || 'Unnamed procedure'
                         return (
                           <tr key={procedure.id}>
-                            <td className="sticky left-0 border-t border-r border-slate-200 bg-white p-1">
+                            <td className="sticky left-0 border-t border-r border-slate-200 bg-surface p-1">
                               <div className="flex items-center gap-1">
                                 <input
                                   className="w-44 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200 pointer-coarse:text-base"
@@ -496,7 +496,7 @@ export default function Timelines() {
                 + Add procedure
               </button>
               {(procedureSetsStatus === 'idle' || procedureSetsStatus === 'loading') && (
-                <p className="text-sm text-slate-500">Loading procedure sets…</p>
+                <p className="text-sm text-slate-500 motion-safe:animate-pulse">Loading procedure sets…</p>
               )}
               {procedureSetsStatus === 'error' && (
                 <div className="flex flex-wrap items-center gap-2">
@@ -570,10 +570,10 @@ export default function Timelines() {
 
       <section className="min-w-0 space-y-4 lg:col-span-2">
         {(timelinesStatus === 'idle' || timelinesStatus === 'loading') && (
-          <p className="text-sm text-slate-500">Loading timelines…</p>
+          <p className="text-sm text-slate-500 motion-safe:animate-pulse">Loading timelines…</p>
         )}
         {timelinesStatus === 'error' && (
-          <div className="space-y-3 rounded-xl border border-slate-200 p-5">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-surface p-5">
             <p className="text-sm text-red-600">Couldn't load your timelines.</p>
             <button onClick={loadTimelines} className={secondaryButtonClass}>
               Try again
@@ -588,7 +588,7 @@ export default function Timelines() {
           timelines.map((timeline) => (
             <article
               key={timeline.id}
-              className={`space-y-2 rounded-xl border border-slate-200 p-5 shadow-sm ${editing?.id === timeline.id ? 'ring-2 ring-slate-400' : ''}`}
+              className={`space-y-2 rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition-shadow ${editing?.id === timeline.id ? 'ring-2 ring-slate-400' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className={dotClass} style={{ backgroundColor: timeline.color ?? undefined }} />

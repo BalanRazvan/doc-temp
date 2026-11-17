@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import StatusBadge from '../components/StatusBadge.tsx'
 import { attendedPillClass, targetPillClass, windowPillClass } from '../lib/ui.ts'
 
 type Language = 'en' | 'ro'
@@ -123,7 +124,7 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Deviation',
         text: (
           <>
-            A visit attended outside its window. It is marked ⚠ wherever the visit is shown, and the visit's note
+            A visit attended outside its window. It is marked with a red ! wherever the visit is shown, and the visit's note
             is the place to say why.
           </>
         ),
@@ -190,7 +191,7 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             Once the patient has come, open <b>Patients</b> and press <b>Record</b> on that visit's row. Pick the
             day they came in <b>Attended on</b>, add a note if there is something to keep, and press <b>Save</b>.
-            The row then shows ✓ if the day was inside the window, or ⚠ if it was not. A day in the future is
+            The row then shows a green ✓ if the day was inside the window, or a red ! if it was not. A day in the future is
             refused: attendance is recorded after the visit.
           </>
         ),
@@ -247,7 +248,7 @@ const content: { en: GuideText; ro: GuideText } = {
         text: (
           <>
             Sets a new date for the first visit. Every target date and window moves with it. Days already recorded
-            keep their date and are checked again against the moved windows, so a ✓ can turn into a ⚠, or the other
+            keep their date and are checked again against the moved windows, so a green ✓ can turn into a red !, or the other
             way round.
           </>
         ),
@@ -481,7 +482,7 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Abatere',
         text: (
           <>
-            O vizită efectuată în afara ferestrei ei. Este marcată cu ⚠ oriunde apare vizita, iar nota vizitei este
+            O vizită efectuată în afara ferestrei ei. Este marcată cu un ! roșu oriunde apare vizita, iar nota vizitei este
             locul în care se poate spune de ce.
           </>
         ),
@@ -549,7 +550,7 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             După ce pacientul a venit, deschideți <b>Patients</b> și apăsați <b>Record</b> pe rândul acelei vizite.
             Alegeți ziua în care a venit în <b>Attended on</b>, adăugați o notă dacă este ceva de păstrat și
-            apăsați <b>Save</b>. Rândul arată apoi ✓ dacă ziua a fost în fereastră sau ⚠ dacă nu a fost. O zi din viitor
+            apăsați <b>Save</b>. Rândul arată apoi un ✓ verde dacă ziua a fost în fereastră sau un ! roșu dacă nu a fost. O zi din viitor
             este refuzată: prezența se înregistrează după vizită.
           </>
         ),
@@ -608,7 +609,7 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             Stabilește o dată nouă pentru prima vizită. Fiecare dată-țintă și fiecare fereastră se mută odată cu ea.
             Zilele deja înregistrate își păstrează data și sunt verificate din nou față de ferestrele mutate, așa că
-            un ✓ poate deveni ⚠ sau invers.
+            un ✓ verde poate deveni un ! roșu sau invers.
           </>
         ),
       },
@@ -766,7 +767,7 @@ const headingClass = 'text-lg font-semibold text-slate-900'
 
 function languageClass(active: boolean): string {
   return active
-    ? 'rounded-md bg-white px-3 py-1.5 text-slate-900 shadow-sm'
+    ? 'rounded-md bg-surface px-3 py-1.5 text-slate-900 shadow-sm'
     : 'rounded-md px-3 py-1.5 text-slate-500 hover:text-slate-900'
 }
 
@@ -861,15 +862,22 @@ export default function UserGuide() {
             <span className="min-w-0">{text.windowPill}</span>
           </li>
           <li className="flex items-baseline gap-3">
-            <span className={`w-24 shrink-0 ${attendedPillClass}`}>✓ P-014 · #2</span>
+            <span className={`w-24 shrink-0 ${attendedPillClass}`}>
+              <StatusBadge status="in-window" small />
+              P-014 · #2
+            </span>
             <span className="min-w-0">{text.attendedPill}</span>
           </li>
           <li className="flex items-baseline gap-3">
-            <span className="w-24 shrink-0 px-1.5 text-slate-900">✓</span>
+            <span className="w-24 shrink-0 px-1.5">
+              <StatusBadge status="in-window" />
+            </span>
             <span className="min-w-0">{text.inWindow}</span>
           </li>
           <li className="flex items-baseline gap-3">
-            <span className="w-24 shrink-0 px-1.5 text-slate-900">⚠</span>
+            <span className="w-24 shrink-0 px-1.5">
+              <StatusBadge status="deviation" />
+            </span>
             <span className="min-w-0">{text.deviation}</span>
           </li>
           <li className="flex items-baseline gap-3">
