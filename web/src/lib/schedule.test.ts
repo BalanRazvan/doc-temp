@@ -6,7 +6,9 @@ import {
   addProcedure,
   appendNames,
   attendedOn,
+  changedStatuses,
   computeVisitDates,
+  daysBetween,
   droppedRecords,
   dropRemovedTicks,
   fixedStepVisits,
@@ -23,12 +25,16 @@ import {
   resnapshot,
   snapshotVisits,
   startOfMonth,
+  statusWords,
   toggleTick,
   toISO,
   visitsOn,
   visitStatus,
+  weekdayName,
+  weekendOnly,
   windowsOn,
   windowDates,
+  windowWords,
 } from './schedule.ts'
 import type { Patient, Timeline, TimelineVisit, Visit } from './types.ts'
 
@@ -173,10 +179,105 @@ test('a visit with nothing recorded is scheduled', () => {
   assert.equal(visitStatus(visitOn('2026-07-01', 3)), 'scheduled')
 })
 
-test('attendance on either edge of the window is still on time', () => {
+test('a visit with only a note is still scheduled', () => {
+  assert.equal(visitStatus({ ...visitOn('2026-07-01', 3), note: 'called, no answer' }), 'scheduled')
+})
+
+test('attendance on either edge of the window is still in window', () => {
   assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-06-28')), 'in-window')
-  assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-07-01')), 'in-window')
   assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-07-04')), 'in-window')
+})
+
+test('attendance on the target day is on target, not just in window', () => {
+  assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-07-01')), 'on-target')
+})
+
+test('a visit with no window attended on its target is on target', () => {
+  assert.equal(visitStatus(visitOn('2026-07-01', 0, '2026-07-01')), 'on-target')
+})
+
+test('one day either side of the target, inside the window, is in window', () => {
+  assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-06-30')), 'in-window')
+  assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-07-02')), 'in-window')
+})
+
+test('each status has its own words', () => {
+  assert.equal(statusWords('scheduled'), 'Nothing recorded yet')
+  assert.equal(statusWords('on-target'), 'On the target day')
+  assert.equal(statusWords('in-window'), 'In window, not on the target day')
+  assert.equal(statusWords('deviation'), 'Deviation: outside the window')
+})
+
+test('days between two dates count forward, are zero for the same day, and negative backwards', () => {
+  assert.equal(daysBetween('2026-07-01', '2026-07-01'), 0)
+  assert.equal(daysBetween('2026-07-01', '2026-07-31'), 30)
+  assert.equal(daysBetween('2026-07-31', '2026-07-01'), -30)
+})
+
+test('days between still counts whole days across the March daylight saving change', () => {
+  assert.equal(daysBetween('2026-03-28', '2026-03-29'), 1)
+  assert.equal(daysBetween('2026-03-28', '2026-03-30'), 2)
+})
+
+test('days between still counts whole days across the October daylight saving change', () => {
+  assert.equal(daysBetween('2026-10-24', '2026-10-25'), 1)
+  assert.equal(daysBetween('2026-10-24', '2026-10-26'), 2)
+})
+
+test('before its window, an unrecorded visit says when the window opens', () => {
+  const visit = visitOn('2026-07-10', 3)
+  assert.equal(windowWords(visit, '2026-07-06'), 'opens tomorrow')
+  assert.equal(windowWords(visit, '2026-07-01'), 'opens in 6 days')
+})
+
+test('inside its window, an unrecorded visit says when the window closes, both edges included', () => {
+  const visit = visitOn('2026-07-10', 3)
+  assert.equal(windowWords(visit, '2026-07-07'), 'closes in 6 days')
+  assert.equal(windowWords(visit, '2026-07-11'), 'closes in 2 days')
+  assert.equal(windowWords(visit, '2026-07-12'), 'closes tomorrow')
+  assert.equal(windowWords(visit, '2026-07-13'), 'closes today')
+})
+
+test('after its window, an unrecorded visit says how long ago it closed', () => {
+  const visit = visitOn('2026-07-10', 3)
+  assert.equal(windowWords(visit, '2026-07-14'), 'closed yesterday')
+  assert.equal(windowWords(visit, '2026-07-20'), 'closed 7 days ago')
+})
+
+test('a visit with no window opens tomorrow, closes today and closed yesterday around its target', () => {
+  const visit = visitOn('2026-07-10', 0)
+  assert.equal(windowWords(visit, '2026-07-09'), 'opens tomorrow')
+  assert.equal(windowWords(visit, '2026-07-10'), 'closes today')
+  assert.equal(windowWords(visit, '2026-07-11'), 'closed yesterday')
+})
+
+test('a visit with only a note is spoken of as unrecorded', () => {
+  assert.equal(windowWords({ ...visitOn('2026-07-10', 3), note: 'called' }, '2026-07-12'), 'closes tomorrow')
+})
+
+test('a deviation is counted from the edge of the window it missed, not from the target', () => {
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-06'), '2026-08-01'), '1 day before the window')
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-03'), '2026-08-01'), '4 days before the window')
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-14'), '2026-08-01'), '1 day after the window')
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-17'), '2026-08-01'), '4 days after the window')
+})
+
+test("a deviation's words do not change with today", () => {
+  const visit = visitOn('2026-07-10', 3, '2026-07-17')
+  assert.equal(windowWords(visit, '2026-07-17'), windowWords(visit, '2027-01-01'))
+})
+
+test('attendance on the target or elsewhere in the window has no window words', () => {
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-10'), '2026-07-20'), '')
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-07'), '2026-07-20'), '')
+  assert.equal(windowWords(visitOn('2026-07-10', 3, '2026-07-13'), '2026-07-20'), '')
+})
+
+test('window words count whole days across the October daylight saving change', () => {
+  const visit = visitOn('2026-10-22', 3)
+  assert.equal(windowWords(visit, '2026-10-24'), 'closes tomorrow')
+  assert.equal(windowWords(visit, '2026-10-26'), 'closed yesterday')
+  assert.equal(windowWords(visitOn('2026-10-22', 3, '2026-10-26'), '2026-11-01'), '1 day after the window')
 })
 
 test('attendance one day outside either edge is a deviation', () => {
@@ -688,5 +789,81 @@ test('procedures already ticked keep their ids and ticks when a set is applied',
   assert.deepEqual(
     dropRemovedTicks(visits, procedures).map((visit) => visit.procedures),
     [['p1', 'p2'], ['p2'], []],
+  )
+})
+
+test('the weekday is named in full, across the turn of the year', () => {
+  assert.equal(weekdayName('2026-12-31'), 'Thursday')
+  assert.equal(weekdayName('2027-01-01'), 'Friday')
+})
+
+test('a visit with no window on a Saturday or a Sunday can only be attended at the weekend', () => {
+  assert.equal(weekendOnly(visitOn('2026-11-21', 0)), true)
+  assert.equal(weekendOnly(visitOn('2026-11-22', 0)), true)
+})
+
+test('a visit with no window on a Monday is not weekend-only', () => {
+  assert.equal(weekendOnly(visitOn('2026-11-23', 0)), false)
+})
+
+test('a one-day window around a Saturday reaches the Friday, and around a Sunday the Monday', () => {
+  assert.equal(weekendOnly(visitOn('2026-11-21', 1)), false)
+  assert.equal(weekendOnly(visitOn('2026-11-22', 1)), false)
+})
+
+test('a visit with no window on the Sunday of the October daylight saving change is weekend-only', () => {
+  assert.equal(weekendOnly(visitOn('2026-10-25', 0)), true)
+})
+
+test('a one-day window around the Sunday of the October daylight saving change still reaches the Monday', () => {
+  assert.equal(weekendOnly(visitOn('2026-10-25', 1)), false)
+})
+
+test('moving a visit attended on its target by a day turns it from on target to in window', () => {
+  const before = [visitOn('2026-07-10', 3, '2026-07-10')]
+  const after = computeVisitDates(before, '2026-07-11')
+  assert.deepEqual(changedStatuses(before, after), [{ visit: after[0], from: 'on-target', to: 'in-window' }])
+})
+
+test('a move can push a visit attended in its window out of it', () => {
+  const before = [visitOn('2026-07-10', 3, '2026-07-12')]
+  const after = computeVisitDates(before, '2026-07-06')
+  assert.deepEqual(changedStatuses(before, after), [{ visit: after[0], from: 'in-window', to: 'deviation' }])
+})
+
+test('a visit with no window turns from on target to deviation, and back when moved onto the day attended', () => {
+  const onTarget = [visitOn('2026-07-10', 0, '2026-07-10')]
+  assert.deepEqual(
+    changedStatuses(onTarget, computeVisitDates(onTarget, '2026-07-11')).map((change) => [change.from, change.to]),
+    [['on-target', 'deviation']],
+  )
+  const late = [visitOn('2026-07-10', 0, '2026-07-12')]
+  assert.deepEqual(
+    changedStatuses(late, computeVisitDates(late, '2026-07-12')).map((change) => [change.from, change.to]),
+    [['deviation', 'on-target']],
+  )
+})
+
+test('a status that stays the same, and a visit with nothing recorded, are not listed', () => {
+  const before = [
+    visitOn('2026-07-10', 3, '2026-07-12'),
+    { ...visitOn('2026-07-24', 3), visitNumber: 2, week: 2 },
+    { ...visitOn('2026-08-07', 0), visitNumber: 3, week: 4, note: 'called, no answer' },
+  ]
+  assert.deepEqual(changedStatuses(before, computeVisitDates(before, '2026-07-11')), [])
+})
+
+test('status changes are matched by visit number, not by place in the list', () => {
+  const before = [
+    visitOn('2026-07-10', 0, '2026-07-10'),
+    { ...visitOn('2026-07-24', 0, '2026-07-25'), visitNumber: 2, week: 2 },
+  ]
+  const after = computeVisitDates(before, '2026-07-11').toReversed()
+  assert.deepEqual(
+    changedStatuses(before, after).map((change) => [change.visit.visitNumber, change.from, change.to]),
+    [
+      [2, 'deviation', 'on-target'],
+      [1, 'on-target', 'deviation'],
+    ],
   )
 })

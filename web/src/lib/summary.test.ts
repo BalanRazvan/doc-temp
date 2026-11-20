@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildSummary } from './summary.ts'
+import { buildSummary, patientProgress } from './summary.ts'
 import type { DayVisit } from './schedule.ts'
 import type { Patient, Timeline, Visit } from './types.ts'
 
@@ -41,6 +41,48 @@ function timeline(id: string): Timeline {
 function labels(list: DayVisit[]): string[] {
   return list.map(({ patient, visit }) => `${patient.name} #${visit.visitNumber}`)
 }
+
+test('a window opening today or closing today is open today, and one opening tomorrow or closed yesterday is not', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-10-01', 3),
+    visit(2, '2026-09-25', 3),
+    visit(3, '2026-10-02', 3),
+    visit(4, '2026-09-24', 3),
+  ])
+  const summary = buildSummary([ana], [timeline('t1')], today)
+  assert.deepEqual(labels(summary.openToday), ['Ana #2', 'Ana #1'])
+})
+
+test('a recorded visit is not open today, on its target, elsewhere in its window or a deviation', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-09-28', 3, '2026-09-28'),
+    visit(2, '2026-09-28', 3, '2026-09-26'),
+    visit(3, '2026-09-28', 0, '2026-09-20'),
+  ])
+  const summary = buildSummary([ana], [timeline('t1')], today)
+  assert.deepEqual(summary.openToday, [])
+})
+
+test('a visit with only a note is still open today', () => {
+  const noted = { ...visit(1, '2026-09-29', 3), note: 'called, no answer' }
+  const summary = buildSummary([patient('Ana', 't1', [noted])], [timeline('t1')], today)
+  assert.deepEqual(labels(summary.openToday), ['Ana #1'])
+})
+
+test('open today is in closing order, whatever the target, and ties keep the patients\' order', () => {
+  const ana = patient('Ana', 't1', [visit(1, '2026-09-28', 7)])
+  const bob = patient('Bob', 't1', [visit(1, '2026-09-28', 0)])
+  const cara = patient('Cara', 't1', [visit(1, '2026-09-27', 3)])
+  const dan = patient('Dan', 't1', [visit(1, '2026-09-29', 1)])
+  const summary = buildSummary([ana, bob, cara, dan], [timeline('t1')], today)
+  assert.deepEqual(labels(summary.openToday), ['Bob #1', 'Cara #1', 'Dan #1', 'Ana #1'])
+})
+
+test('open today keeps both edges across the October daylight saving change', () => {
+  const ana = patient('Ana', 't1', [visit(1, '2026-10-22', 3), visit(2, '2026-10-21', 3), visit(3, '2026-10-29', 4)])
+  const summary = buildSummary([ana], [timeline('t1')], '2026-10-25')
+  assert.deepEqual(labels(summary.openToday), ['Ana #1', 'Ana #3'])
+})
 
 test('a visit targeted from today to six days ahead is due this week, and not yesterday or seven days ahead', () => {
   const ana = patient('Ana', 't1', [
@@ -229,6 +271,7 @@ test('a patient whose timeline was deleted is still listed and counted, but adds
 
 test('no patients and no timelines give empty lists and zero counts', () => {
   assert.deepEqual(buildSummary([], [], today), {
+    openToday: [],
     dueThisWeek: [],
     closingSoon: [],
     overdue: [],
@@ -249,4 +292,87 @@ test('timelines with no patients are counted, but none of them is active', () =>
   const summary = buildSummary([], [timeline('t1'), timeline('t2')], today)
   assert.equal(summary.counts.timelines, 2)
   assert.equal(summary.counts.activeTimelines, 0)
+})
+
+test('a fresh patient has their first visit next, and nothing recorded, deviating or overdue', () => {
+  const ana = patient('Ana', 't1', [visit(1, '2026-10-05', 3), visit(2, '2026-11-02', 3)])
+  const progress = patientProgress(ana, today)
+  assert.equal(progress.next?.visitNumber, 1)
+  assert.equal(progress.recorded, 0)
+  assert.equal(progress.deviations, 0)
+  assert.equal(progress.overdue, 0)
+})
+
+test('next is the open window with the earliest target, whatever order the visits are stored in', () => {
+  const ana = patient('Ana', 't1', [visit(3, '2026-11-02', 3), visit(1, '2026-09-21', 3, '2026-09-21'), visit(2, '2026-10-05', 3)])
+  assert.equal(patientProgress(ana, today).next?.visitNumber, 2)
+})
+
+test('a window closing today can still be next, and one that closed yesterday is overdue instead', () => {
+  const closingToday = patient('Ana', 't1', [visit(1, '2026-09-25', 3), visit(2, '2026-10-20', 3)])
+  const closedYesterday = patient('Bob', 't1', [visit(1, '2026-09-24', 3), visit(2, '2026-10-20', 3)])
+  assert.equal(patientProgress(closingToday, today).next?.visitNumber, 1)
+  assert.equal(patientProgress(closingToday, today).overdue, 0)
+  assert.equal(patientProgress(closedYesterday, today).next?.visitNumber, 2)
+  assert.equal(patientProgress(closedYesterday, today).overdue, 1)
+})
+
+test('recorded counts every visit with a date, and deviations only those outside their window', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-08-03', 3, '2026-08-03'),
+    visit(2, '2026-08-17', 3, '2026-08-19'),
+    visit(3, '2026-08-31', 3, '2026-09-08'),
+    visit(4, '2026-09-14', 0, '2026-09-13'),
+    visit(5, '2026-10-12', 3),
+  ])
+  const progress = patientProgress(ana, today)
+  assert.equal(progress.recorded, 4)
+  assert.equal(progress.deviations, 2)
+  assert.equal(progress.next?.visitNumber, 5)
+})
+
+test('a note alone is not recorded: the visit can still be next or overdue', () => {
+  const ana = patient('Ana', 't1', [
+    { ...visit(1, '2026-09-10', 3), note: 'called, no answer' },
+    { ...visit(2, '2026-10-01', 3), note: 'coming Thursday' },
+  ])
+  const progress = patientProgress(ana, today)
+  assert.equal(progress.recorded, 0)
+  assert.equal(progress.overdue, 1)
+  assert.equal(progress.next?.visitNumber, 2)
+})
+
+test('a finished patient has no next and every visit recorded', () => {
+  const ana = patient('Ana', 't1', [visit(1, '2026-08-03', 3, '2026-08-03'), visit(2, '2026-09-07', 3, '2026-09-08')])
+  const progress = patientProgress(ana, today)
+  assert.equal(progress.next, null)
+  assert.equal(progress.recorded, 2)
+  assert.equal(progress.overdue, 0)
+})
+
+test("a patient's overdue count agrees with the dashboard's overdue list", () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-08-03', 3, '2026-08-03'),
+    visit(2, '2026-08-31', 3),
+    visit(3, '2026-09-14', 7),
+    visit(4, '2026-09-24', 3),
+    visit(5, '2026-09-25', 3),
+    { ...visit(6, '2026-09-01', 0), note: 'moved away' },
+  ])
+  assert.equal(patientProgress(ana, today).overdue, buildSummary([ana], [timeline('t1')], today).overdue.length)
+  assert.equal(patientProgress(ana, today).overdue, 4)
+})
+
+test('a patient has a next visit exactly when the dashboard counts them active', () => {
+  const people = [
+    patient('Ana', 't1', [visit(1, '2026-09-20', 3, '2026-09-20'), visit(2, '2026-09-25', 3)]),
+    patient('Bob', 't1', [visit(1, '2026-09-20', 3, '2026-09-20'), visit(2, '2026-09-30', 3, '2026-09-28')]),
+    patient('Cara', 't1', [visit(1, '2026-09-20', 3)]),
+    patient('Dan', 't1', [visit(1, '2026-12-01', 3)]),
+    patient('Eve', 't1', [{ ...visit(1, '2026-09-29', 0), note: 'phoned' }]),
+  ]
+  for (const person of people) {
+    const active = buildSummary([person], [timeline('t1')], today).counts.activePatients === 1
+    assert.equal(patientProgress(person, today).next !== null, active, person.name)
+  }
 })

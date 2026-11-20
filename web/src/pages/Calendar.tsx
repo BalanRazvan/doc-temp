@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import Legend from '../components/Legend.tsx'
+import RecordVisit from '../components/RecordVisit.tsx'
 import StatusBadge from '../components/StatusBadge.tsx'
 import {
   addMonths,
@@ -12,11 +13,13 @@ import {
   plannedProcedures,
   shortDate,
   startOfMonth,
+  statusWords,
   toISO,
   visitsOn,
   visitStatus,
   windowDates,
   windowsOn,
+  windowWords,
 } from '../lib/schedule.ts'
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
@@ -43,6 +46,7 @@ export default function Calendar() {
   const today = toISO(new Date())
   const [month, setMonth] = useState(startOfMonth(today))
   const [openDay, setOpenDay] = useState<string | null>(null)
+  const [openRecord, setOpenRecord] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -79,12 +83,12 @@ export default function Calendar() {
     const { from, to } = windowDates(visit)
     const procedures = plannedProcedures(patient, visit)
     const status = visitStatus(visit)
-    let statusWords = 'Nothing recorded yet'
-    if (status === 'in-window') statusWords = 'In window'
-    if (status === 'deviation') statusWords = 'Deviation: outside the window'
+    const words = windowWords(visit, today)
+    const key = `${patient.id}-${visit.visitNumber}`
+    const isOpen = openRecord === key
     return (
       <article
-        key={`${patient.id}-${visit.visitNumber}`}
+        key={key}
         className="flex w-full flex-col gap-3 rounded-lg border border-t-4 border-slate-200 border-t-slate-300 p-3 text-sm text-slate-900 sm:w-56"
         style={{ borderTopColor: color }}
       >
@@ -97,8 +101,9 @@ export default function Calendar() {
           </span>
           <p className="flex items-baseline gap-1.5 pt-1 text-slate-700">
             <StatusBadge status={status} />
-            {statusWords}
+            {statusWords(status)}
           </p>
+          {words && <p className="text-slate-700">{words}</p>}
           <p className="text-slate-500">{label}</p>
           <p className="break-words text-slate-700">{timelineOf(patient)?.name ?? 'No timeline'}</p>
         </div>
@@ -133,11 +138,23 @@ export default function Calendar() {
             </ul>
           )}
         </div>
-        {visit.note && (
+        {visit.note && !isOpen && (
           <p className="rounded-md bg-slate-50 px-2 py-1.5 break-words text-slate-700">
             <span className="text-slate-500">Note: </span>
             {visit.note}
           </p>
+        )}
+        <button onClick={() => setOpenRecord(isOpen ? null : key)} className={`self-start ${secondaryButtonClass}`}>
+          {isOpen ? 'Close' : visit.actualDate || visit.note ? 'Edit' : 'Record'}
+        </button>
+        {isOpen && (
+          <RecordVisit
+            key={key}
+            patient={patient}
+            visit={visit}
+            onCancel={() => setOpenRecord(null)}
+            onSaved={() => setOpenRecord(null)}
+          />
         )}
       </article>
     )
@@ -354,7 +371,10 @@ export default function Calendar() {
       <dialog
         ref={dialogRef}
         aria-labelledby="day-heading"
-        onClose={() => setOpenDay(null)}
+        onClose={() => {
+          setOpenDay(null)
+          setOpenRecord(null)
+        }}
         onClick={(event) => {
           if (event.target === event.currentTarget) dialogRef.current?.close()
         }}

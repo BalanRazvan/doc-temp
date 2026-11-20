@@ -20,6 +20,7 @@ type GuideText = {
   targetPill: string
   windowPill: string
   attendedPill: string
+  onTarget: string
   inWindow: string
   deviation: string
   noMark: string
@@ -171,7 +172,9 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             Open <b>Patients</b>, type a name or a code, choose the timeline and pick the date of the first visit,
             then press <b>Add patient</b>. The timeline's visits are copied onto the patient, and every target date
-            is worked out from that first date.
+            is worked out from that first date. A timeline counts in whole weeks, so every target date falls on the
+            same weekday as the first visit: once a timeline and a date are chosen, the form says which weekday, warns
+            when it is a Saturday or a Sunday, and lists the visits it would make under a line you can open.
           </>
         ),
       },
@@ -189,10 +192,12 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Record a visit',
         text: (
           <>
-            Once the patient has come, open <b>Patients</b> and press <b>Record</b> on that visit's row. Pick the
-            day they came in <b>Attended on</b>, add a note if there is something to keep, and press <b>Save</b>.
-            The row then shows a green ✓ if the day was inside the window, or a red ! if it was not. A day in the future is
-            refused: attendance is recorded after the visit.
+            Once the patient has come, press <b>Record</b> on that visit: on its row on <b>Patients</b> or on the{' '}
+            <b>Dashboard</b>, or on its card when you open a day on the <b>Calendar</b>. Pick the day they came in{' '}
+            <b>Attended on</b>, or press <b>Today</b>, add a note if there is something to keep, and press{' '}
+            <b>Save</b>. The visit then shows a green ✓ if that day was its target day, a blue ✓ if it was another
+            day inside the window, or a red ! if it was outside it. A day in the future is refused: attendance is
+            recorded after the visit.
           </>
         ),
       },
@@ -204,7 +209,8 @@ const content: { en: GuideText; ro: GuideText } = {
     windowPill:
       "Tinted: a day inside the visit's window. Coming on this day is still on time. Window days show only while nothing is recorded for the visit.",
     attendedPill: 'Unfilled, with a coloured edge: the day the patient came, when it was not the target day.',
-    inWindow: 'Attended inside the window.',
+    onTarget: 'Attended on the target day.',
+    inWindow: 'Attended on another day inside the window.',
     deviation: 'Deviation: attended outside the window.',
     noMark: 'No mark: nothing recorded yet.',
     calendar: [
@@ -213,9 +219,14 @@ const content: { en: GuideText; ro: GuideText } = {
         in a filled circle.
       </>,
       <>
-        Click or tap a day with visits to open it. Every visit of that day gets a card: the patient, the timeline,
-        the target date, the window, the day attended, the procedures planned for that visit, and its note.{' '}
-        <b>Close</b>, Escape or a click outside the cards closes it.
+        Click or tap a day with visits to open it. Every visit of that day gets a card: the patient, its status in
+        words, the timeline, the target date, the window, the day attended, the procedures planned for that visit,
+        and its note. A visit with nothing recorded also says where its window stands, such as "closes in 2 days"
+        or "closed 3 days ago", and a deviation says how far outside the window it was, such as "2 days after the
+        window". These words count from today, not from the day you opened. <b>Record</b> (<b>Edit</b>, once something
+        is recorded) at the foot of a card opens the same form as on <b>Patients</b>, inside the card; after{' '}
+        <b>Save</b> the card changes where it stands. <b>Close</b>, Escape or a click outside the cards closes the
+        day.
       </>,
       <>
         On a wide screen, resting the mouse on a day with visits shows them in a panel at the side of the screen.
@@ -231,7 +242,9 @@ const content: { en: GuideText; ro: GuideText } = {
     changesIntro: (
       <>
         Each patient's schedule is their own copy, so it is changed on the <b>Patients</b> page, one patient at a
-        time. <b>Edit</b> on a patient opens three forms, and each visit's row has one of its own.
+        time. Under the date of the first visit, each patient's card says where they are up to, such as "Next #5 ·
+        closes in 4 days · Recorded 4 of 12 · 1 deviation"; "No window still open" means every visit not yet
+        recorded is overdue. <b>Edit</b> on a patient opens three forms, and each visit's row has one of its own.
       </>
     ),
     changes: [
@@ -248,8 +261,10 @@ const content: { en: GuideText; ro: GuideText } = {
         text: (
           <>
             Sets a new date for the first visit. Every target date and window moves with it. Days already recorded
-            keep their date and are checked again against the moved windows, so a green ✓ can turn into a red !, or the other
-            way round.
+            keep their date and are checked again against the moved windows, so a mark can change. Every green ✓
+            becomes a blue ✓ or a red !, because every target moves off the day the patient came. Before you press{' '}
+            <b>Move dates</b>, the form says how many days every target moves and to which weekday, and lists each
+            recorded visit whose mark would change, or says that none would.
           </>
         ),
       },
@@ -268,13 +283,17 @@ const content: { en: GuideText; ro: GuideText } = {
         ),
       },
       {
-        name: 'Record, Clear date and Note',
+        name: 'Record, Today, Clear date and Note',
         text: (
           <>
-            <b>Record</b> on a visit's row (<b>Edit</b>, once something is recorded) opens that visit.{' '}
-            <b>Attended on</b> is the day the patient came; <b>Clear date</b> empties it, for a day recorded by
-            mistake; <b>Note</b> keeps anything worth keeping, such as why a visit was a deviation. Nothing is saved
-            until you press <b>Save</b>, and changing one visit never moves another.
+            <b>Record</b> on a visit's row (<b>Edit</b>, once something is recorded) opens that visit; the{' '}
+            <b>Dashboard</b>'s rows and the <b>Calendar</b>'s day cards open the same form. <b>Attended on</b> is the
+            day the patient came. It starts empty, so opening a visit only to write a note records nothing;{' '}
+            <b>Today</b> fills in today's date, and <b>Clear date</b> empties it, for a day recorded by mistake.
+            Under it, a line shows the mark that date would give, such as "Deviation: outside the window · 4 days
+            before the window", before anything is saved. <b>Note</b> keeps anything worth keeping, such as why a
+            visit was a deviation or that the patient did not answer the phone. Nothing is saved until you press{' '}
+            <b>Save</b>, and changing one visit never moves another.
           </>
         ),
       },
@@ -302,11 +321,24 @@ const content: { en: GuideText; ro: GuideText } = {
     dashboardIntro: (
       <>
         The <b>Dashboard</b> is the first page after you sign in. It is worked out from your patients' schedules
-        each time it opens. <b>Overdue</b> and <b>Recent deviations</b> show five rows at first, and "+N more"
-        shows the rest.
+        each time it opens. Each row names the patient, the visit and its timeline, then says where the visit stands
+        in its window, such as "closes in 2 days", before the window's dates. <b>Record</b> at the end of a row
+        opens the visit's form under it, on every list but <b>Recent deviations</b>; once a day attended is saved,
+        the visit leaves the lists and a line at the top of the page says what was recorded. <b>Overdue</b> and{' '}
+        <b>Recent deviations</b> show five rows at first, and "+N more" shows the rest.
       </>
     ),
     dashboard: [
+      {
+        name: 'Open today',
+        text: (
+          <>
+            Visits with nothing recorded whose window includes today, its first and last days too: the patients who
+            can come in today and still be on time. The window that closes soonest comes first. Its link opens the{' '}
+            <b>Calendar</b>.
+          </>
+        ),
+      },
       {
         name: 'Needs attention',
         text: (
@@ -341,7 +373,8 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Recent deviations',
         text: (
           <>
-            Every visit attended outside its window, the latest first. Its link opens <b>Patients</b>.
+            Every visit attended outside its window, the latest first, with the day attended and how far outside
+            the window it was. Its link opens <b>Patients</b>.
           </>
         ),
       },
@@ -530,7 +563,10 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             Deschideți <b>Patients</b>, scrieți un nume sau un cod, alegeți timeline-ul și data primei vizite, apoi
             apăsați <b>Add patient</b>. Vizitele timeline-ului sunt copiate pe pacient, iar fiecare dată-țintă este
-            calculată pornind de la acea primă dată.
+            calculată pornind de la acea primă dată. Un timeline numără în săptămâni întregi, așa că fiecare
+            dată-țintă cade în aceeași zi a săptămânii ca prima vizită: după ce alegeți timeline-ul și data,
+            formularul spune ce zi este, avertizează când este sâmbătă sau duminică și enumeră vizitele pe care le-ar
+            crea, sub un rând care se poate deschide.
           </>
         ),
       },
@@ -548,10 +584,12 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Înregistrați o vizită',
         text: (
           <>
-            După ce pacientul a venit, deschideți <b>Patients</b> și apăsați <b>Record</b> pe rândul acelei vizite.
-            Alegeți ziua în care a venit în <b>Attended on</b>, adăugați o notă dacă este ceva de păstrat și
-            apăsați <b>Save</b>. Rândul arată apoi un ✓ verde dacă ziua a fost în fereastră sau un ! roșu dacă nu a fost. O zi din viitor
-            este refuzată: prezența se înregistrează după vizită.
+            După ce pacientul a venit, apăsați <b>Record</b> pe acea vizită: pe rândul ei din <b>Patients</b> sau
+            din <b>Dashboard</b>, ori pe cardul ei când deschideți o zi în <b>Calendar</b>. Alegeți ziua în care a
+            venit în <b>Attended on</b> sau apăsați <b>Today</b>, adăugați o notă dacă este ceva de păstrat și
+            apăsați <b>Save</b>. Vizita arată apoi un ✓ verde dacă acea zi a fost chiar ziua-țintă, un ✓ albastru
+            dacă a fost altă zi din fereastră sau un ! roșu dacă a fost în afara ei. O zi din viitor este refuzată: prezența se
+            înregistrează după vizită.
           </>
         ),
       },
@@ -563,7 +601,8 @@ const content: { en: GuideText; ro: GuideText } = {
     windowPill:
       'Colorată mai deschis: o zi din fereastra vizitei. Venirea în această zi este încă la timp. Zilele ferestrei apar doar cât timp nu este nimic înregistrat pentru vizită.',
     attendedPill: 'Neumplută, cu marginea colorată: ziua în care a venit pacientul, când aceasta nu a fost ziua-țintă.',
-    inWindow: 'Efectuată în fereastră.',
+    onTarget: 'Efectuată în data-țintă.',
+    inWindow: 'Efectuată în altă zi din fereastră.',
     deviation: 'Abatere: efectuată în afara ferestrei.',
     noMark: 'Niciun marcaj: nimic înregistrat încă.',
     calendar: [
@@ -573,8 +612,13 @@ const content: { en: GuideText; ro: GuideText } = {
       </>,
       <>
         Faceți clic sau atingeți o zi cu vizite pentru a o deschide. Fiecare vizită din acea zi primește un card:
-        pacientul, timeline-ul, data-țintă, fereastra, ziua prezentării, procedurile planificate pentru acea vizită
-        și nota ei. <b>Close</b>, tasta Escape sau un clic în afara cardurilor o închid.
+        pacientul, starea ei în cuvinte, timeline-ul, data-țintă, fereastra, ziua prezentării, procedurile
+        planificate pentru acea vizită și nota ei. O vizită fără nimic înregistrat spune și cum stă fereastra ei, de
+        exemplu „closes in 2 days” sau „closed 3 days ago”, iar o abatere spune cât de departe de fereastră a fost,
+        de exemplu „2 days after the window”. Aceste cuvinte se numără de azi, nu de la ziua deschisă.{' '}
+        <b>Record</b> (<b>Edit</b>, după ce s-a înregistrat ceva) din josul unui card deschide același formular ca
+        în <b>Patients</b>, în interiorul cardului; după <b>Save</b>, cardul se schimbă acolo unde este.{' '}
+        <b>Close</b>, tasta Escape sau un clic în afara cardurilor închid ziua.
       </>,
       <>
         Pe un ecran lat, când țineți mouse-ul pe o zi cu vizite, acestea apar într-un panou în marginea ecranului.
@@ -591,7 +635,10 @@ const content: { en: GuideText; ro: GuideText } = {
     changesIntro: (
       <>
         Programul fiecărui pacient este copia lui, așa că se modifică pe pagina <b>Patients</b>, câte un pacient pe
-        rând. <b>Edit</b> pe un pacient deschide trei formulare, iar rândul fiecărei vizite îl are pe al său.
+        rând. Sub data primei vizite, cardul fiecărui pacient spune unde a ajuns, de exemplu „Next #5 · closes in 4
+        days · Recorded 4 of 12 · 1 deviation”; „No window still open” înseamnă că fiecare vizită încă
+        neînregistrată este depășită. <b>Edit</b> pe un pacient deschide trei formulare, iar rândul fiecărei vizite
+        îl are pe al său.
       </>
     ),
     changes: [
@@ -609,7 +656,10 @@ const content: { en: GuideText; ro: GuideText } = {
           <>
             Stabilește o dată nouă pentru prima vizită. Fiecare dată-țintă și fiecare fereastră se mută odată cu ea.
             Zilele deja înregistrate își păstrează data și sunt verificate din nou față de ferestrele mutate, așa că
-            un ✓ verde poate deveni un ! roșu sau invers.
+            un marcaj se poate schimba. Fiecare ✓ verde devine un ✓ albastru sau un ! roșu, pentru că fiecare
+            dată-țintă se mută de pe ziua în care a venit pacientul. Înainte să apăsați <b>Move dates</b>, formularul
+            spune cu câte zile se mută fiecare dată-țintă și în ce zi a săptămânii, și enumeră fiecare vizită
+            înregistrată al cărei marcaj s-ar schimba sau spune că niciunul nu s-ar schimba.
           </>
         ),
       },
@@ -628,14 +678,18 @@ const content: { en: GuideText; ro: GuideText } = {
         ),
       },
       {
-        name: 'Record, Clear date și Note',
+        name: 'Record, Today, Clear date și Note',
         text: (
           <>
-            <b>Record</b> pe rândul unei vizite (<b>Edit</b>, după ce s-a înregistrat ceva) deschide acea vizită.{' '}
-            <b>Attended on</b> este ziua în care a venit pacientul; <b>Clear date</b> o golește, pentru o zi
-            înregistrată din greșeală; <b>Note</b> păstrează orice merită păstrat, de exemplu de ce o vizită a fost o
-            abatere. Nimic nu se salvează până nu apăsați <b>Save</b>, iar modificarea unei vizite nu le mută
-            niciodată pe celelalte.
+            <b>Record</b> pe rândul unei vizite (<b>Edit</b>, după ce s-a înregistrat ceva) deschide acea vizită;
+            rândurile din <b>Dashboard</b> și cardurile zilelor din <b>Calendar</b> deschid același formular.{' '}
+            <b>Attended on</b> este ziua în care a venit pacientul. Pornește gol, așa că deschiderea unei vizite doar
+            pentru a scrie o notă nu înregistrează nimic; <b>Today</b> completează data de azi, iar{' '}
+            <b>Clear date</b> o golește, pentru o zi înregistrată din greșeală. Sub ea, un rând arată marcajul pe care
+            l-ar da acea dată, de exemplu „Deviation: outside the window · 4 days before the window”, înainte să se
+            salveze ceva. <b>Note</b> păstrează orice merită păstrat, de exemplu de ce o vizită a fost o abatere sau
+            că pacientul nu a răspuns la telefon. Nimic nu se salvează până nu apăsați <b>Save</b>, iar modificarea
+            unei vizite nu le mută niciodată pe celelalte.
           </>
         ),
       },
@@ -664,11 +718,25 @@ const content: { en: GuideText; ro: GuideText } = {
     dashboardIntro: (
       <>
         <b>Dashboard</b> este prima pagină după autentificare. Este calculată din programele pacienților de fiecare
-        dată când se deschide. <b>Overdue</b> și <b>Recent deviations</b> arată la început cinci rânduri, iar
-        „+N more” le arată pe celelalte.
+        dată când se deschide. Fiecare rând arată pacientul, vizita și timeline-ul, apoi cum stă vizita față de
+        fereastra ei, de exemplu „closes in 2 days”, înaintea datelor ferestrei. <b>Record</b> de la capătul unui
+        rând deschide formularul vizitei sub el, pe toate listele în afară de <b>Recent deviations</b>; după ce se
+        salvează ziua prezentării, vizita iese din liste, iar un rând în partea de sus a paginii spune ce s-a
+        înregistrat. <b>Overdue</b> și <b>Recent deviations</b> arată la început cinci rânduri, iar „+N more” le arată
+        pe celelalte.
       </>
     ),
     dashboard: [
+      {
+        name: 'Open today',
+        text: (
+          <>
+            Vizitele fără nimic înregistrat a căror fereastră include ziua de azi, inclusiv prima și ultima ei zi:
+            pacienții care pot veni azi și sunt încă la timp. Prima este fereastra care se închide cel mai curând.
+            Legătura lui deschide <b>Calendar</b>.
+          </>
+        ),
+      },
       {
         name: 'Needs attention',
         text: (
@@ -703,8 +771,8 @@ const content: { en: GuideText; ro: GuideText } = {
         name: 'Recent deviations',
         text: (
           <>
-            Toate vizitele efectuate în afara ferestrei, cele mai recente primele. Legătura lui deschide{' '}
-            <b>Patients</b>.
+            Toate vizitele efectuate în afara ferestrei, cele mai recente primele, cu ziua prezentării și cât de
+            departe de fereastră a fost. Legătura lui deschide <b>Patients</b>.
           </>
         ),
       },
@@ -867,6 +935,12 @@ export default function UserGuide() {
               P-014 · #2
             </span>
             <span className="min-w-0">{text.attendedPill}</span>
+          </li>
+          <li className="flex items-baseline gap-3">
+            <span className="w-24 shrink-0 px-1.5">
+              <StatusBadge status="on-target" />
+            </span>
+            <span className="min-w-0">{text.onTarget}</span>
           </li>
           <li className="flex items-baseline gap-3">
             <span className="w-24 shrink-0 px-1.5">
