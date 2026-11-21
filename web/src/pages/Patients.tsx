@@ -1,21 +1,28 @@
 import { Fragment, useState } from 'react'
 import type { SubmitEvent } from 'react'
 import { Link } from 'react-router'
+import RecordVisit from '../components/RecordVisit.tsx'
 import StatusBadge from '../components/StatusBadge.tsx'
 import {
+  changedStatuses,
   computeVisitDates,
+  daysBetween,
   droppedRecords,
   longDate,
-  recordActual,
   resnapshot,
   shortDate,
   snapshotVisits,
+  statusWords,
   toISO,
   visitStatus,
+  weekdayName,
+  weekendOnly,
   windowDates,
+  windowWords,
 } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
 import type { PatientChanges } from '../lib/store.ts'
+import { patientProgress } from '../lib/summary.ts'
 import type { Patient, Visit } from '../lib/types.ts'
 import { buttonClass, dotClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
 
@@ -23,6 +30,33 @@ type OpenVisit = { patientId: string; visitNumber: number }
 
 function visitNumbers(visits: Visit[]): string {
   return visits.map((visit) => `#${visit.visitNumber}`).join(', ')
+}
+
+function weekendNote(anchor: string, visits: Visit[]): string {
+  const weekday = weekdayName(anchor)
+  if (weekday !== 'Saturday' && weekday !== 'Sunday') return ''
+  const weekendVisits = visits.filter(weekendOnly)
+  let note = `Most clinics are closed on ${weekday}s.`
+  if (weekendVisits.length === 1) {
+    note += ` ${visitNumbers(weekendVisits)} has no window, so it can only be attended on a ${weekday}.`
+  }
+  if (weekendVisits.length > 1) {
+    note += ` ${visitNumbers(weekendVisits)} have no window, so they can only be attended on a ${weekday}.`
+  }
+  return note
+}
+
+function progressLine(patient: Patient, today: string): string {
+  const progress = patientProgress(patient, today)
+  const parts: string[] = []
+  if (progress.next) parts.push(`Next #${progress.next.visitNumber} · ${windowWords(progress.next, today)}`)
+  else if (progress.overdue > 0) parts.push('No window still open')
+  else parts.push('Every visit recorded')
+  parts.push(`Recorded ${progress.recorded} of ${patient.visits.length}`)
+  if (progress.deviations === 1) parts.push('1 deviation')
+  if (progress.deviations > 1) parts.push(`${progress.deviations} deviations`)
+  if (progress.overdue > 0) parts.push(`${progress.overdue} overdue`)
+  return parts.join(' · ')
 }
 
 export default function Patients() {
@@ -50,8 +84,6 @@ export default function Patients() {
   const [switchId, setSwitchId] = useState('')
 
   const [openVisit, setOpenVisit] = useState<OpenVisit | null>(null)
-  const [visitDate, setVisitDate] = useState('')
-  const [visitNote, setVisitNote] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [cardError, setCardError] = useState('')
@@ -60,6 +92,16 @@ export default function Patients() {
   const editing = patients.find((patient) => patient.id === editingId)
   const switchTo = timelines.find((timeline) => timeline.id === switchId)
   const dropped = editing && switchTo ? droppedRecords(editing.visits, switchTo) : []
+
+  const chosenTimeline = timelines.find((timeline) => timeline.id === timelineId)
+  const projected = chosenTimeline && anchor ? snapshotVisits(chosenTimeline, anchor) : []
+  const addNote = anchor ? weekendNote(anchor, projected) : ''
+
+  const moving = editing !== undefined && editAnchor !== '' && editAnchor !== editing.anchor_date
+  const moved = moving ? computeVisitDates(editing.visits, editAnchor) : []
+  const moveDays = moving ? daysBetween(editing.anchor_date, editAnchor) : 0
+  const moveNote = moving ? weekendNote(editAnchor, moved) : ''
+  const statusChanges = moving ? changedStatuses(editing.visits, moved) : []
 
   function timelineOf(patient: Patient) {
     return timelines.find((timeline) => timeline.id === patient.source_timeline_id)
@@ -121,8 +163,6 @@ export default function Patients() {
   function startVisit(patient: Patient, visit: Visit) {
     closeEditors()
     setOpenVisit({ patientId: patient.id, visitNumber: visit.visitNumber })
-    setVisitDate(visit.actualDate ?? '')
-    setVisitNote(visit.note ?? '')
   }
 
   async function savePatient(id: string, changes: PatientChanges) {
@@ -170,20 +210,6 @@ export default function Patients() {
       source_timeline_id: switchTo.id,
       visits: resnapshot(patient.visits, switchTo, patient.anchor_date),
       procedures: switchTo.procedures,
-    })
-  }
-
-  async function handleSaveVisit(event: SubmitEvent<HTMLFormElement>, patient: Patient, visit: Visit) {
-    event.preventDefault()
-    if (visitDate > today) {
-      setCardError('That date is in the future. Attendance is recorded once the visit has happened.')
-      return
-    }
-    const updated = recordActual(visit, visitDate || null)
-    if (visitNote.trim()) updated.note = visitNote.trim()
-    else delete updated.note
-    await savePatient(patient.id, {
-      visits: patient.visits.map((other) => (other.visitNumber === visit.visitNumber ? updated : other)),
     })
   }
 
@@ -275,6 +301,27 @@ export default function Patients() {
               </span>
             </label>
 
+            {projected.length > 0 && (
+              <div className="space-y-2">
+                <p className={`text-sm ${addNote ? 'text-slate-900' : 'text-slate-600'}`}>
+                  Every target date is a {weekdayName(anchor)}. {addNote}
+                </p>
+                <details className="text-sm text-slate-600">
+                  <summary className="cursor-pointer font-medium text-slate-700">
+                    {projected.length} {projected.length === 1 ? 'visit' : 'visits'}:{' '}
+                    {longDate(projected[0].targetDate)} to {longDate(projected[projected.length - 1].targetDate)}
+                  </summary>
+                  <ul className="mt-1 space-y-0.5 tabular-nums">
+                    {projected.map((visit) => (
+                      <li key={visit.visitNumber}>
+                        #{visit.visitNumber} · {longDate(visit.targetDate)} · ±{visit.window}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+            )}
+
             {addError && <p className="text-sm text-red-600">{addError}</p>}
             <button className={buttonClass} disabled={adding}>
               {adding ? 'Adding…' : 'Add patient'}
@@ -313,6 +360,7 @@ export default function Patients() {
                 </div>
               </div>
               <p className="text-sm text-slate-600">First visit {longDate(patient.anchor_date)}</p>
+              <p className="text-sm text-slate-600">{progressLine(patient, today)}</p>
               {patient.note && <p className="text-sm break-words text-slate-600">{patient.note}</p>}
 
               {isEditing && (
@@ -360,6 +408,27 @@ export default function Patients() {
                       Every target date moves with it. Recorded attendance keeps its date and is checked against the
                       moved windows.
                     </p>
+                    {moving && (
+                      <div className="space-y-1 text-sm">
+                        <p className={moveNote ? 'text-slate-900' : 'text-slate-600'}>
+                          Every target moves {Math.abs(moveDays)} {Math.abs(moveDays) === 1 ? 'day' : 'days'}{' '}
+                          {moveDays > 0 ? 'later' : 'earlier'}, to {weekdayName(editAnchor)}s. {moveNote}
+                        </p>
+                        {statusChanges.length === 0 ? (
+                          <p className="text-slate-600">No recorded visit changes status.</p>
+                        ) : (
+                          <ul className="space-y-0.5 text-slate-900">
+                            {statusChanges.map(({ visit, from, to }) => (
+                              <li key={visit.visitNumber}>
+                                #{visit.visitNumber}, attended {visit.actualDate && longDate(visit.actualDate)}:{' '}
+                                <StatusBadge status={from} /> → <StatusBadge status={to} /> {statusWords(to)}
+                                {windowWords(visit, today) && ` · ${windowWords(visit, today)}`}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                     <button className={secondaryButtonClass} disabled={saving || editAnchor === patient.anchor_date}>
                       Move dates
                     </button>
@@ -467,47 +536,13 @@ export default function Patients() {
                           {isOpen && (
                             <tr>
                               <td colSpan={6} className="pb-3">
-                                <form
-                                  onSubmit={(event) => handleSaveVisit(event, patient, visit)}
-                                  className="space-y-2 rounded-lg bg-slate-50 p-3 transition-opacity starting:opacity-0"
-                                >
-                                  <div className="flex flex-wrap items-end gap-2">
-                                    <label className="block space-y-1">
-                                      <span className={labelClass}>Attended on</span>
-                                      <input
-                                        className={inputClass}
-                                        type="date"
-                                        max={today}
-                                        value={visitDate}
-                                        onChange={(event) => setVisitDate(event.target.value)}
-                                      />
-                                    </label>
-                                    <button
-                                      type="button"
-                                      onClick={() => setVisitDate('')}
-                                      className={secondaryButtonClass}
-                                    >
-                                      Clear date
-                                    </button>
-                                  </div>
-                                  <label className="block space-y-1">
-                                    <span className={labelClass}>Note</span>
-                                    <input
-                                      className={inputClass}
-                                      value={visitNote}
-                                      onChange={(event) => setVisitNote(event.target.value)}
-                                    />
-                                  </label>
-                                  {cardError && <p className="text-sm text-red-600">{cardError}</p>}
-                                  <div className="flex gap-2">
-                                    <button className={buttonClass} disabled={saving}>
-                                      {saving ? 'Saving…' : 'Save'}
-                                    </button>
-                                    <button type="button" onClick={closeEditors} className={secondaryButtonClass}>
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </form>
+                                <RecordVisit
+                                  key={`${patient.id}-${visit.visitNumber}`}
+                                  patient={patient}
+                                  visit={visit}
+                                  onCancel={closeEditors}
+                                  onSaved={closeEditors}
+                                />
                               </td>
                             </tr>
                           )}

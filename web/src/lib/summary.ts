@@ -1,8 +1,9 @@
 import { addDays, addMonths, parseISO, startOfMonth, toISO, visitStatus, windowDates } from './schedule.ts'
 import type { DayVisit } from './schedule.ts'
-import type { Patient, Timeline } from './types.ts'
+import type { Patient, Timeline, Visit } from './types.ts'
 
 export type Summary = {
+  openToday: DayVisit[]
   dueThisWeek: DayVisit[]
   closingSoon: DayVisit[]
   overdue: DayVisit[]
@@ -16,6 +17,13 @@ export type Summary = {
     visitsLastMonth: number
     recorded: number
   }
+}
+
+export type PatientProgress = {
+  next: Visit | null
+  recorded: number
+  deviations: number
+  overdue: number
 }
 
 function byDate(a: string, b: string): number {
@@ -36,6 +44,10 @@ export function buildSummary(patients: Patient[], timelines: Timeline[], today: 
   }
   const open = all.filter(({ visit }) => !visit.actualDate)
 
+  const openToday = open.filter(({ visit }) => {
+    const { from, to } = windowDates(visit)
+    return from <= today && today <= to
+  })
   const dueThisWeek = open.filter(({ visit }) => today <= visit.targetDate && visit.targetDate <= weekEnd)
   const closingSoon = open.filter(({ visit }) => {
     const lastDay = windowDates(visit).to
@@ -52,6 +64,7 @@ export function buildSummary(patients: Patient[], timelines: Timeline[], today: 
   )
 
   return {
+    openToday: openToday.toSorted((a, b) => byDate(windowDates(a.visit).to, windowDates(b.visit).to)),
     dueThisWeek: dueThisWeek.toSorted((a, b) => byDate(a.visit.targetDate, b.visit.targetDate)),
     closingSoon: closingSoon.toSorted((a, b) => byDate(windowDates(a.visit).to, windowDates(b.visit).to)),
     overdue: overdue.toSorted((a, b) => byDate(windowDates(b.visit).to, windowDates(a.visit).to)),
@@ -66,4 +79,22 @@ export function buildSummary(patients: Patient[], timelines: Timeline[], today: 
       recorded: all.filter(({ visit }) => visit.actualDate).length,
     },
   }
+}
+
+export function patientProgress(patient: Patient, today: string): PatientProgress {
+  let next: Visit | null = null
+  let recorded = 0
+  let deviations = 0
+  let overdue = 0
+  for (const visit of patient.visits) {
+    if (visit.actualDate) {
+      recorded++
+      if (visitStatus(visit) === 'deviation') deviations++
+    } else if (windowDates(visit).to < today) {
+      overdue++
+    } else if (next === null || visit.targetDate < next.targetDate) {
+      next = visit
+    }
+  }
+  return { next, recorded, deviations, overdue }
 }

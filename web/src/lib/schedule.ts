@@ -1,8 +1,10 @@
 import type { Patient, Procedure, Timeline, TimelineVisit, Visit } from './types.ts'
 
-export type VisitStatus = 'scheduled' | 'in-window' | 'deviation'
+export type VisitStatus = 'scheduled' | 'on-target' | 'in-window' | 'deviation'
 
 export type DayVisit = { patient: Patient; visit: Visit }
+
+export type StatusChange = { visit: Visit; from: VisitStatus; to: VisitStatus }
 
 export type TicksByVisit = { [visitNumber: number]: string[] }
 
@@ -31,10 +33,18 @@ export function shortDate(iso: string): string {
   return parseISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+export function weekdayName(iso: string): string {
+  return parseISO(iso).toLocaleDateString('en-GB', { weekday: 'long' })
+}
+
 export function addDays(date: Date, days: number): Date {
   const out = new Date(date)
   out.setDate(out.getDate() + days)
   return out
+}
+
+export function daysBetween(from: string, to: string): number {
+  return Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / 86_400_000)
 }
 
 export function computeVisitDates(patientVisits: TimelineVisit[], anchorISO: string): Visit[] {
@@ -155,8 +165,64 @@ export function windowDates(visit: Visit): { from: string; to: string } {
 
 export function visitStatus(visit: Visit): VisitStatus {
   if (!visit.actualDate) return 'scheduled'
+  if (visit.actualDate === visit.targetDate) return 'on-target'
   const { from, to } = windowDates(visit)
   return visit.actualDate >= from && visit.actualDate <= to ? 'in-window' : 'deviation'
+}
+
+export function statusWords(status: VisitStatus): string {
+  if (status === 'on-target') return 'On the target day'
+  if (status === 'in-window') return 'In window, not on the target day'
+  if (status === 'deviation') return 'Deviation: outside the window'
+  return 'Nothing recorded yet'
+}
+
+export function windowWords(visit: Visit, today: string): string {
+  const { from, to } = windowDates(visit)
+  if (visit.actualDate) {
+    if (visit.actualDate < from) {
+      const days = daysBetween(visit.actualDate, from)
+      return days === 1 ? '1 day before the window' : `${days} days before the window`
+    }
+    if (visit.actualDate > to) {
+      const days = daysBetween(to, visit.actualDate)
+      return days === 1 ? '1 day after the window' : `${days} days after the window`
+    }
+    return ''
+  }
+  if (today < from) {
+    const days = daysBetween(today, from)
+    return days === 1 ? 'opens tomorrow' : `opens in ${days} days`
+  }
+  if (today <= to) {
+    const days = daysBetween(today, to)
+    if (days === 0) return 'closes today'
+    if (days === 1) return 'closes tomorrow'
+    return `closes in ${days} days`
+  }
+  const days = daysBetween(to, today)
+  return days === 1 ? 'closed yesterday' : `closed ${days} days ago`
+}
+
+export function weekendOnly(visit: Visit): boolean {
+  const target = parseISO(visit.targetDate)
+  for (let offset = -visit.window; offset <= visit.window; offset++) {
+    const weekday = addDays(target, offset).getDay()
+    if (weekday !== 0 && weekday !== 6) return false
+  }
+  return true
+}
+
+export function changedStatuses(before: Visit[], after: Visit[]): StatusChange[] {
+  const changes: StatusChange[] = []
+  for (const visit of after) {
+    const earlier = before.find((candidate) => candidate.visitNumber === visit.visitNumber)
+    if (!earlier) continue
+    const from = visitStatus(earlier)
+    const to = visitStatus(visit)
+    if (from !== to) changes.push({ visit, from, to })
+  }
+  return changes
 }
 
 export function recordActual(visit: Visit, dateISO: string | null): Visit {

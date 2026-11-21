@@ -1,8 +1,21 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import Markup from '../components/Markup.tsx'
+import RecordVisit from '../components/RecordVisit.tsx'
 import StatusBadge from '../components/StatusBadge.tsx'
-import { addDays, addMonths, longDate, parseISO, shortDate, startOfMonth, toISO, visitStatus, windowDates } from '../lib/schedule.ts'
+import {
+  addDays,
+  addMonths,
+  longDate,
+  parseISO,
+  shortDate,
+  startOfMonth,
+  statusWords,
+  toISO,
+  visitStatus,
+  windowDates,
+  windowWords,
+} from '../lib/schedule.ts'
 import type { DayVisit } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
 import { buildSummary } from '../lib/summary.ts'
@@ -15,6 +28,8 @@ const cardClass = 'space-y-3 rounded-xl border border-slate-200 bg-surface p-5 s
 const linkClass = 'inline-block text-sm font-medium text-slate-900 underline'
 
 const moreClass = 'text-sm font-medium text-slate-600 hover:text-slate-900'
+
+type Recorded = { patientId: string; visitNumber: number }
 
 function monthName(iso: string): string {
   return parseISO(iso).toLocaleDateString('en-GB', { month: 'long' })
@@ -33,6 +48,8 @@ export default function Dashboard() {
 
   const [allOverdue, setAllOverdue] = useState(false)
   const [allDeviations, setAllDeviations] = useState(false)
+  const [openRow, setOpenRow] = useState<string | null>(null)
+  const [recorded, setRecorded] = useState<Recorded | null>(null)
 
   const today = toISO(new Date())
 
@@ -41,23 +58,75 @@ export default function Dashboard() {
     if (patientsStatus === 'error') loadPatients()
   }
 
-  function visitRow({ patient, visit }: DayVisit) {
+  function openRecord(key: string) {
+    setOpenRow(key)
+    setRecorded(null)
+  }
+
+  function visitRow(list: string, { patient, visit }: DayVisit) {
     const timeline = timelines.find((candidate) => candidate.id === patient.source_timeline_id)
     const { from, to } = windowDates(visit)
+    const key = `${list}-${patient.id}-${visit.visitNumber}`
+    const isOpen = openRow === key
     return (
-      <li key={`${patient.id}-${visit.visitNumber}`} className="flex items-baseline gap-2 py-1.5 text-sm">
-        <StatusBadge status={visitStatus(visit)} />
-        <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-          <span className="min-w-0 font-medium break-words">{patient.name}</span>
-          <span className="text-slate-500">#{visit.visitNumber}</span>
-          <span className="min-w-0 break-words text-slate-500">{timeline?.name ?? 'No timeline'}</span>
-          <span className="ml-auto text-slate-700">
-            {visit.actualDate && `attended ${shortDate(visit.actualDate)} · window `}
-            {shortDate(from)} – {shortDate(to)}
-          </span>
+      <li key={key} className="py-1.5 text-sm">
+        <div className="flex items-baseline gap-2">
+          <StatusBadge status={visitStatus(visit)} />
+          <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
+          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+            <span className="min-w-0 font-medium break-words">{patient.name}</span>
+            <span className="text-slate-500">#{visit.visitNumber}</span>
+            <span className="min-w-0 break-words text-slate-500">{timeline?.name ?? 'No timeline'}</span>
+            <span className="ml-auto text-slate-700">
+              {visit.actualDate
+                ? `attended ${shortDate(visit.actualDate)}, ${windowWords(visit, today)} · window `
+                : `${windowWords(visit, today)} · `}
+              {shortDate(from)} – {shortDate(to)}
+            </span>
+          </div>
+          {list !== 'deviations' && (
+            <button
+              onClick={() => (isOpen ? setOpenRow(null) : openRecord(key))}
+              className={`shrink-0 ${secondaryButtonClass}`}
+            >
+              {isOpen ? 'Close' : visit.actualDate || visit.note ? 'Edit' : 'Record'}
+            </button>
+          )}
         </div>
+        {isOpen && (
+          <div className="pt-2">
+            <RecordVisit
+              key={`${patient.id}-${visit.visitNumber}`}
+              patient={patient}
+              visit={visit}
+              onCancel={() => setOpenRow(null)}
+              onSaved={() => {
+                setOpenRow(null)
+                setRecorded({ patientId: patient.id, visitNumber: visit.visitNumber })
+              }}
+            />
+          </div>
+        )}
       </li>
+    )
+  }
+
+  function confirmation() {
+    if (!recorded) return null
+    const patient = patients.find((candidate) => candidate.id === recorded.patientId)
+    const visit = patient?.visits.find((candidate) => candidate.visitNumber === recorded.visitNumber)
+    if (!patient || !visit) return null
+    const name = `${patient.name} · #${visit.visitNumber}`
+    if (!visit.actualDate) {
+      return `Saved the note on ${name}. No attended date is recorded, so it stays on the lists.`
+    }
+    const status = visitStatus(visit)
+    const words = windowWords(visit, today)
+    return (
+      <>
+        Recorded {name}: attended {longDate(visit.actualDate)}. <StatusBadge status={status} /> {statusWords(status)}
+        {words && ` · ${words}`}
+      </>
     )
   }
 
@@ -97,23 +166,38 @@ export default function Dashboard() {
             </Link>
           </p>
         )}
+        <p role="status" className="w-full text-sm break-words text-slate-900">
+          {confirmation()}
+        </p>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <div className="min-w-0 space-y-6">
+          <section className={cardClass}>
+            <h2 className="text-lg font-semibold">Open today · {summary.openToday.length}</h2>
+            {summary.openToday.length === 0 ? (
+              <p className="text-sm text-slate-500">Nobody's window is open today.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">{summary.openToday.map((found) => visitRow('openToday', found))}</ul>
+            )}
+            <Link to="/calendar" className={linkClass}>
+              Open the calendar
+            </Link>
+          </section>
+
           <section className={cardClass}>
             <h2 className="text-lg font-semibold">Needs attention</h2>
             <h3 className="text-sm font-medium text-slate-600">Closing soon · {summary.closingSoon.length}</h3>
             {summary.closingSoon.length === 0 ? (
               <p className="text-sm text-slate-500">No window closes in the next three days.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">{summary.closingSoon.map(visitRow)}</ul>
+              <ul className="divide-y divide-slate-100">{summary.closingSoon.map((found) => visitRow('closingSoon', found))}</ul>
             )}
             <h3 className="text-sm font-medium text-slate-600">Overdue · {summary.overdue.length}</h3>
             {summary.overdue.length === 0 ? (
               <p className="text-sm text-slate-500">Nothing overdue.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">{overdue.map(visitRow)}</ul>
+              <ul className="divide-y divide-slate-100">{overdue.map((found) => visitRow('overdue', found))}</ul>
             )}
             {summary.overdue.length > shownAtFirst && (
               <button onClick={() => setAllOverdue(!allOverdue)} className={`block ${moreClass}`}>
@@ -178,7 +262,7 @@ export default function Dashboard() {
             {summary.dueThisWeek.length === 0 ? (
               <p className="text-sm text-slate-500">Nothing due this week.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">{summary.dueThisWeek.map(visitRow)}</ul>
+              <ul className="divide-y divide-slate-100">{summary.dueThisWeek.map((found) => visitRow('dueThisWeek', found))}</ul>
             )}
             <Link to="/patients" className={linkClass}>
               Open the Patients page
@@ -190,7 +274,7 @@ export default function Dashboard() {
             {summary.deviations.length === 0 ? (
               <p className="text-sm text-slate-500">No deviations recorded.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">{deviations.map(visitRow)}</ul>
+              <ul className="divide-y divide-slate-100">{deviations.map((found) => visitRow('deviations', found))}</ul>
             )}
             {summary.deviations.length > shownAtFirst && (
               <button onClick={() => setAllDeviations(!allDeviations)} className={`block ${moreClass}`}>

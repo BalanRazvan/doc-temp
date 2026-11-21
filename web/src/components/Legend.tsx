@@ -55,9 +55,15 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
         <ul className="space-y-1.5">
           <li className="flex items-center gap-3">
             <span className="flex w-4 shrink-0 justify-center">
+              <StatusBadge status="on-target" />
+            </span>
+            <span>On its target day</span>
+          </li>
+          <li className="flex items-center gap-3">
+            <span className="flex w-4 shrink-0 justify-center">
               <StatusBadge status="in-window" />
             </span>
-            <span>Attended inside its window</span>
+            <span>Another day inside its window</span>
           </li>
           <li className="flex items-center gap-3">
             <span className="flex w-4 shrink-0 justify-center">
