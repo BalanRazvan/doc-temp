@@ -170,6 +170,11 @@ export function visitStatus(visit: Visit): VisitStatus {
   return visit.actualDate >= from && visit.actualDate <= to ? 'in-window' : 'deviation'
 }
 
+export function isBooked(visit: Visit, today: string): boolean {
+  if (!visit.actualDate) return false
+  return visit.actualDate > today
+}
+
 export function statusWords(status: VisitStatus): string {
   if (status === 'on-target') return 'On the target day'
   if (status === 'in-window') return 'In window, not on the target day'

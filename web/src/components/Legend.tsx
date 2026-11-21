@@ -72,6 +72,12 @@ export default function Legend({ timelines }: { timelines: Timeline[] }) {
             <span>Deviation: attended outside its window</span>
           </li>
           <li className="flex items-center gap-3">
+            <span className="flex w-4 shrink-0 justify-center">
+              <StatusBadge status="on-target" booked />
+            </span>
+            <span>Booked: the day is still to come; turns solid on that day</span>
+          </li>
+          <li className="flex items-center gap-3">
             <span className="w-4 shrink-0" />
             <span>No mark: nothing recorded yet</span>
           </li>

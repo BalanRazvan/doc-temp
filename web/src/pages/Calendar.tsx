@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge.tsx'
 import {
   addMonths,
   attendedOn,
+  isBooked,
   longDate,
   monthGrid,
   parseISO,
@@ -73,7 +74,7 @@ export default function Calendar() {
     if (kind === 'attended') {
       pillClass = attendedPillClass
       pillStyle = { borderColor: color }
-      label = 'Attended on this day'
+      label = isBooked(visit, today) ? 'Booked for this day' : 'Attended on this day'
     }
     if (kind === 'window') {
       pillClass = windowPillClass
@@ -83,6 +84,7 @@ export default function Calendar() {
     const { from, to } = windowDates(visit)
     const procedures = plannedProcedures(patient, visit)
     const status = visitStatus(visit)
+    const booked = isBooked(visit, today)
     const words = windowWords(visit, today)
     const key = `${patient.id}-${visit.visitNumber}`
     const isOpen = openRecord === key
@@ -95,13 +97,14 @@ export default function Calendar() {
         <div className="space-y-1">
           <span className={pillClass} style={pillStyle}>
             <span className="min-w-0 break-words">
-              <StatusBadge status={status} small /> {patient.name}{' '}
+              <StatusBadge status={status} booked={booked} small /> {patient.name}{' '}
               <span className="whitespace-nowrap">· #{visit.visitNumber}</span>
             </span>
           </span>
           <p className="flex items-baseline gap-1.5 pt-1 text-slate-700">
-            <StatusBadge status={status} />
+            <StatusBadge status={status} booked={booked} />
             {statusWords(status)}
+            {booked && ' · booked'}
           </p>
           {words && <p className="text-slate-700">{words}</p>}
           <p className="text-slate-500">{label}</p>
@@ -116,7 +119,7 @@ export default function Calendar() {
           </dd>
           {visit.actualDate && (
             <>
-              <dt className="text-slate-500">Attended</dt>
+              <dt className="text-slate-500">{booked ? 'Booked' : 'Attended'}</dt>
               <dd>{longDate(visit.actualDate)}</dd>
             </>
           )}
@@ -294,7 +297,7 @@ export default function Calendar() {
                           color: color ? `contrast-color(${color})` : undefined,
                         }}
                       >
-                        <StatusBadge status={visitStatus(visit)} small />
+                        <StatusBadge status={visitStatus(visit)} booked={isBooked(visit, today)} small />
                         <span className="truncate">{patient.name}</span>
                         <span className="shrink-0">· #{visit.visitNumber}</span>
                       </span>
@@ -306,7 +309,7 @@ export default function Calendar() {
                       className={attendedPillClass}
                       style={{ borderColor: colorOf(patient) }}
                     >
-                      <StatusBadge status={visitStatus(visit)} small />
+                      <StatusBadge status={visitStatus(visit)} booked={isBooked(visit, today)} small />
                       <span className="truncate">{patient.name}</span>
                       <span className="shrink-0">· #{visit.visitNumber}</span>
                     </span>
@@ -337,7 +340,7 @@ export default function Calendar() {
                       <span className={dotClass} style={{ backgroundColor: colorOf(patient) }} />
                       <span className="truncate font-medium text-slate-900">{patient.name}</span>
                       <span className="shrink-0 text-slate-500">#{visit.visitNumber}</span>
-                      <StatusBadge status={visitStatus(visit)} />
+                      <StatusBadge status={visitStatus(visit)} booked={isBooked(visit, today)} />
                     </li>
                   ))}
                   {attended.map(({ patient, visit }) => (
@@ -347,8 +350,10 @@ export default function Calendar() {
                         style={{ borderColor: colorOf(patient) }}
                       />
                       <span className="truncate font-medium text-slate-900">{patient.name}</span>
-                      <span className="shrink-0 text-slate-500">#{visit.visitNumber} · attended</span>
-                      <StatusBadge status={visitStatus(visit)} />
+                      <span className="shrink-0 text-slate-500">
+                        #{visit.visitNumber} · {isBooked(visit, today) ? 'booked' : 'attended'}
+                      </span>
+                      <StatusBadge status={visitStatus(visit)} booked={isBooked(visit, today)} />
                     </li>
                   ))}
                   {windows.map(({ patient, visit }) => (

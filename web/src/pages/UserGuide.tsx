@@ -23,6 +23,7 @@ type GuideText = {
   onTarget: string
   inWindow: string
   deviation: string
+  booked: string
   noMark: string
   calendar: ReactNode[]
   changesHeading: string
@@ -53,8 +54,8 @@ const content: { en: GuideText; ro: GuideText } = {
         finding it afterwards.
       </>,
       <>
-        Nobody books anything. There are no appointment slots: the patient comes in on any day inside the window,
-        and you record the day they came.
+        Nobody books a slot: the patient comes in on any day inside the window, and you record the day they came,
+        or the day they have confirmed they will come.
       </>,
       <>
         The round button with a moon, 🌙, in the header beside <b>Sign out</b>, makes the pages dark; it then shows a
@@ -196,8 +197,10 @@ const content: { en: GuideText; ro: GuideText } = {
             <b>Dashboard</b>, or on its card when you open a day on the <b>Calendar</b>. Pick the day they came in{' '}
             <b>Attended on</b>, or press <b>Today</b>, add a note if there is something to keep, and press{' '}
             <b>Save</b>. The visit then shows a green ✓ if that day was its target day, a blue ✓ if it was another
-            day inside the window, or a red ! if it was outside it. A day in the future is refused: attendance is
-            recorded after the visit.
+            day inside the window, or a red ! if it was outside it. You can also record a day still to come, once the
+            patient has confirmed it. It counts like any recorded visit (its window days leave the calendar and it
+            leaves the to-do lists), and its mark is outlined until that day, when it turns solid by itself. If the
+            patient does not come, clear the date.
           </>
         ),
       },
@@ -212,6 +215,7 @@ const content: { en: GuideText; ro: GuideText } = {
     onTarget: 'Attended on the target day.',
     inWindow: 'Attended on another day inside the window.',
     deviation: 'Deviation: attended outside the window.',
+    booked: 'Outlined: a day still to come, confirmed by the patient. It turns solid on that day.',
     noMark: 'No mark: nothing recorded yet.',
     calendar: [
       <>
@@ -291,8 +295,10 @@ const content: { en: GuideText; ro: GuideText } = {
             day the patient came. It starts empty, so opening a visit only to write a note records nothing;{' '}
             <b>Today</b> fills in today's date, and <b>Clear date</b> empties it, for a day recorded by mistake.
             Under it, a line shows the mark that date would give, such as "Deviation: outside the window · 4 days
-            before the window", before anything is saved. <b>Note</b> keeps anything worth keeping, such as why a
-            visit was a deviation or that the patient did not answer the phone. Nothing is saved until you press{' '}
+            before the window", before anything is saved. For a day still to come the line ends in "· booked", and
+            until that day the pages say "booked" where they would say "attended". <b>Note</b> keeps anything worth
+            keeping, such as why a visit was a deviation or that the patient did not answer the phone. Nothing is
+            saved until you press{' '}
             <b>Save</b>, and changing one visit never moves another.
           </>
         ),
@@ -442,8 +448,8 @@ const content: { en: GuideText; ro: GuideText } = {
         abatere, astfel încât o vedeți din timp, în loc să o descoperiți după aceea.
       </>,
       <>
-        Nimeni nu face programări. Nu există intervale orare rezervate: pacientul vine în orice zi din fereastră,
-        iar dumneavoastră înregistrați ziua în care a venit.
+        Nimeni nu rezervă un interval orar: pacientul vine în orice zi din fereastră, iar dumneavoastră înregistrați
+        ziua în care a venit sau ziua în care a confirmat că va veni.
       </>,
       <>
         Butonul rotund cu luna, 🌙, din antet de lângă <b>Sign out</b>, face paginile întunecate; apoi arată un
@@ -588,8 +594,10 @@ const content: { en: GuideText; ro: GuideText } = {
             din <b>Dashboard</b>, ori pe cardul ei când deschideți o zi în <b>Calendar</b>. Alegeți ziua în care a
             venit în <b>Attended on</b> sau apăsați <b>Today</b>, adăugați o notă dacă este ceva de păstrat și
             apăsați <b>Save</b>. Vizita arată apoi un ✓ verde dacă acea zi a fost chiar ziua-țintă, un ✓ albastru
-            dacă a fost altă zi din fereastră sau un ! roșu dacă a fost în afara ei. O zi din viitor este refuzată: prezența se
-            înregistrează după vizită.
+            dacă a fost altă zi din fereastră sau un ! roșu dacă a fost în afara ei. Puteți înregistra și o zi care nu
+            a venit încă, după ce pacientul a confirmat-o. Contează ca orice vizită înregistrată (zilele ferestrei
+            dispar din calendar și vizita iese din liste), iar marcajul ei este conturat până în acea zi, când devine
+            plin de la sine. Dacă pacientul nu vine, ștergeți data.
           </>
         ),
       },
@@ -604,6 +612,7 @@ const content: { en: GuideText; ro: GuideText } = {
     onTarget: 'Efectuată în data-țintă.',
     inWindow: 'Efectuată în altă zi din fereastră.',
     deviation: 'Abatere: efectuată în afara ferestrei.',
+    booked: 'Conturat: o zi care nu a venit încă, confirmată de pacient. Devine plin în acea zi.',
     noMark: 'Niciun marcaj: nimic înregistrat încă.',
     calendar: [
       <>
@@ -687,7 +696,8 @@ const content: { en: GuideText; ro: GuideText } = {
             pentru a scrie o notă nu înregistrează nimic; <b>Today</b> completează data de azi, iar{' '}
             <b>Clear date</b> o golește, pentru o zi înregistrată din greșeală. Sub ea, un rând arată marcajul pe care
             l-ar da acea dată, de exemplu „Deviation: outside the window · 4 days before the window”, înainte să se
-            salveze ceva. <b>Note</b> păstrează orice merită păstrat, de exemplu de ce o vizită a fost o abatere sau
+            salveze ceva. Pentru o zi care nu a venit încă, rândul se termină cu „· booked”, iar până în acea zi
+            paginile scriu „booked” acolo unde ar scrie „attended”. <b>Note</b> păstrează orice merită păstrat, de exemplu de ce o vizită a fost o abatere sau
             că pacientul nu a răspuns la telefon. Nimic nu se salvează până nu apăsați <b>Save</b>, iar modificarea
             unei vizite nu le mută niciodată pe celelalte.
           </>
@@ -953,6 +963,12 @@ export default function UserGuide() {
               <StatusBadge status="deviation" />
             </span>
             <span className="min-w-0">{text.deviation}</span>
+          </li>
+          <li className="flex items-baseline gap-3">
+            <span className="w-24 shrink-0 px-1.5">
+              <StatusBadge status="on-target" booked />
+            </span>
+            <span className="min-w-0">{text.booked}</span>
           </li>
           <li className="flex items-baseline gap-3">
             <span className="w-24 shrink-0" />

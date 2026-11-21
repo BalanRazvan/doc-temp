@@ -12,6 +12,7 @@ import {
   droppedRecords,
   dropRemovedTicks,
   fixedStepVisits,
+  isBooked,
   monthGrid,
   namesFromLines,
   nextColor,
@@ -199,6 +200,26 @@ test('a visit with no window attended on its target is on target', () => {
 test('one day either side of the target, inside the window, is in window', () => {
   assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-06-30')), 'in-window')
   assert.equal(visitStatus(visitOn('2026-07-01', 3, '2026-07-02')), 'in-window')
+})
+
+test('a visit with nothing recorded, or only a note, is not booked', () => {
+  assert.equal(isBooked(visitOn('2026-11-25', 3), '2026-11-21'), false)
+  assert.equal(isBooked({ ...visitOn('2026-11-25', 3), note: 'will call back' }, '2026-11-21'), false)
+})
+
+test('a day already past, or today itself, is not booked; tomorrow is', () => {
+  assert.equal(isBooked(visitOn('2026-11-22', 3, '2026-11-20'), '2026-11-21'), false)
+  assert.equal(isBooked(visitOn('2026-11-22', 3, '2026-11-21'), '2026-11-21'), false)
+  assert.equal(isBooked(visitOn('2026-11-22', 3, '2026-11-22'), '2026-11-21'), true)
+})
+
+test('booked is about the day recorded, not the target', () => {
+  assert.equal(isBooked(visitOn('2026-11-30', 7, '2026-11-24'), '2026-11-25'), false)
+  assert.equal(isBooked(visitOn('2026-11-18', 7, '2026-11-24'), '2026-11-21'), true)
+})
+
+test('a day booked across the new year is still to come', () => {
+  assert.equal(isBooked(visitOn('2027-01-01', 3, '2027-01-01'), '2026-12-31'), true)
 })
 
 test('each status has its own words', () => {
@@ -627,11 +648,26 @@ test('a deviation has no window days either', () => {
   assert.deepEqual(windowsOn([patient], '2026-10-16'), [])
 })
 
+test('a day booked ahead has no window days, on any day of its window', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-12-02', 3, '2026-12-03')])
+  for (const day of ['2026-11-29', '2026-11-30', '2026-12-01', '2026-12-03', '2026-12-04', '2026-12-05']) {
+    assert.deepEqual(windowsOn([patient], day), [], day)
+  }
+})
+
 test('a visit attended on another day is listed on that day, and only there', () => {
   const patient = enrolled('Zoe', [visitOn('2026-10-14', 3, '2026-10-16')])
   assert.equal(attendedOn([patient], '2026-10-16').length, 1)
   assert.deepEqual(attendedOn([patient], '2026-10-14'), [])
   assert.deepEqual(attendedOn([patient], '2026-10-15'), [])
+})
+
+test('a visit booked ahead on another day than its target is listed on its booked day', () => {
+  const patient = enrolled('Zoe', [visitOn('2026-12-02', 3, '2026-12-04')])
+  const found = attendedOn([patient], '2026-12-04')
+  assert.equal(found.length, 1)
+  assert.equal(isBooked(found[0].visit, '2026-11-21'), true)
+  assert.deepEqual(attendedOn([patient], '2026-12-02'), [])
 })
 
 test('a visit attended on its target day is not listed again', () => {

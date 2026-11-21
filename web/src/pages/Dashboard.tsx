@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge.tsx'
 import {
   addDays,
   addMonths,
+  isBooked,
   longDate,
   parseISO,
   shortDate,
@@ -68,10 +69,11 @@ export default function Dashboard() {
     const { from, to } = windowDates(visit)
     const key = `${list}-${patient.id}-${visit.visitNumber}`
     const isOpen = openRow === key
+    const booked = isBooked(visit, today)
     return (
       <li key={key} className="py-1.5 text-sm">
         <div className="flex items-baseline gap-2">
-          <StatusBadge status={visitStatus(visit)} />
+          <StatusBadge status={visitStatus(visit)} booked={booked} />
           <span className={dotClass} style={{ backgroundColor: timeline?.color ?? undefined }} />
           <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
             <span className="min-w-0 font-medium break-words">{patient.name}</span>
@@ -79,7 +81,7 @@ export default function Dashboard() {
             <span className="min-w-0 break-words text-slate-500">{timeline?.name ?? 'No timeline'}</span>
             <span className="ml-auto text-slate-700">
               {visit.actualDate
-                ? `attended ${shortDate(visit.actualDate)}, ${windowWords(visit, today)} · window `
+                ? `${booked ? 'booked for' : 'attended'} ${shortDate(visit.actualDate)}, ${windowWords(visit, today)} · window `
                 : `${windowWords(visit, today)} · `}
               {shortDate(from)} – {shortDate(to)}
             </span>
@@ -121,11 +123,14 @@ export default function Dashboard() {
       return `Saved the note on ${name}. No attended date is recorded, so it stays on the lists.`
     }
     const status = visitStatus(visit)
+    const booked = isBooked(visit, today)
     const words = windowWords(visit, today)
     return (
       <>
-        Recorded {name}: attended {longDate(visit.actualDate)}. <StatusBadge status={status} /> {statusWords(status)}
+        Recorded {name}: {booked ? 'booked for' : 'attended'} {longDate(visit.actualDate)}.{' '}
+        <StatusBadge status={status} booked={booked} /> {statusWords(status)}
         {words && ` · ${words}`}
+        {booked && ' · booked'}
       </>
     )
   }
