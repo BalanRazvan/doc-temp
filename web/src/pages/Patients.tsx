@@ -8,6 +8,7 @@ import {
   computeVisitDates,
   daysBetween,
   droppedRecords,
+  isBooked,
   longDate,
   resnapshot,
   shortDate,
@@ -420,8 +421,10 @@ export default function Patients() {
                           <ul className="space-y-0.5 text-slate-900">
                             {statusChanges.map(({ visit, from, to }) => (
                               <li key={visit.visitNumber}>
-                                #{visit.visitNumber}, attended {visit.actualDate && longDate(visit.actualDate)}:{' '}
-                                <StatusBadge status={from} /> → <StatusBadge status={to} /> {statusWords(to)}
+                                #{visit.visitNumber}, {isBooked(visit, today) ? 'booked for' : 'attended'}{' '}
+                                {visit.actualDate && longDate(visit.actualDate)}:{' '}
+                                <StatusBadge status={from} booked={isBooked(visit, today)} /> →{' '}
+                                <StatusBadge status={to} booked={isBooked(visit, today)} /> {statusWords(to)}
                                 {windowWords(visit, today) && ` · ${windowWords(visit, today)}`}
                               </li>
                             ))}
@@ -503,7 +506,10 @@ export default function Patients() {
                               </span>
                               {visit.actualDate && (
                                 <span className="block sm:hidden">
-                                  <span className="text-slate-500">Attended</span> {longDate(visit.actualDate)}
+                                  <span className="text-slate-500">
+                                    {isBooked(visit, today) ? 'Booked' : 'Attended'}
+                                  </span>{' '}
+                                  {longDate(visit.actualDate)}
                                 </span>
                               )}
                             </td>
@@ -514,7 +520,7 @@ export default function Patients() {
                               {visit.actualDate ? longDate(visit.actualDate) : '—'}
                             </td>
                             <td className="w-6 py-1 text-center">
-                              <StatusBadge status={visitStatus(visit)} />
+                              <StatusBadge status={visitStatus(visit)} booked={isBooked(visit, today)} />
                             </td>
                             <td className="w-12 py-1 text-right">
                               <button

@@ -162,6 +162,30 @@ test('a visit with only a note is not recorded, so it stays on the to-do lists',
   assert.equal(summary.counts.recorded, 0)
 })
 
+test('a day booked ahead is on no to-do list, though its window is open, due this week, closing soon or closed', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-09-29', 2, '2026-09-30'),
+    visit(2, '2026-10-03', 0, '2026-10-03'),
+    visit(3, '2026-09-20', 3, '2026-10-02'),
+  ])
+  const summary = buildSummary([ana], [timeline('t1')], today)
+  assert.deepEqual(summary.openToday, [])
+  assert.deepEqual(summary.dueThisWeek, [])
+  assert.deepEqual(summary.closingSoon, [])
+  assert.deepEqual(summary.overdue, [])
+})
+
+test('a day booked ahead counts as recorded, and one outside its window is a deviation', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-09-29', 2, '2026-09-30'),
+    visit(2, '2026-09-20', 3, '2026-10-02'),
+    visit(3, '2026-10-12', 3),
+  ])
+  const summary = buildSummary([ana], [timeline('t1')], today)
+  assert.equal(summary.counts.recorded, 2)
+  assert.deepEqual(labels(summary.deviations), ['Ana #2'])
+})
+
 test('a tight window due this week is on both This week and closing soon', () => {
   const ana = patient('Ana', 't1', [visit(1, '2026-09-29', 1)])
   const summary = buildSummary([ana], [timeline('t1')], today)
@@ -348,6 +372,30 @@ test('a finished patient has no next and every visit recorded', () => {
   assert.equal(progress.next, null)
   assert.equal(progress.recorded, 2)
   assert.equal(progress.overdue, 0)
+})
+
+test('a day booked ahead counts as recorded in a patient\'s progress, and next skips it', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-09-21', 3, '2026-09-21'),
+    visit(2, '2026-10-05', 3, '2026-10-06'),
+    visit(3, '2026-10-19', 3, '2026-10-30'),
+    visit(4, '2026-11-02', 3),
+  ])
+  const progress = patientProgress(ana, today)
+  assert.equal(progress.recorded, 3)
+  assert.equal(progress.deviations, 1)
+  assert.equal(progress.overdue, 0)
+  assert.equal(progress.next?.visitNumber, 4)
+})
+
+test('a patient whose remaining visits are all booked ahead is not active, and has no next', () => {
+  const ana = patient('Ana', 't1', [
+    visit(1, '2026-09-21', 3, '2026-09-21'),
+    visit(2, '2026-09-29', 3, '2026-09-30'),
+    visit(3, '2026-10-12', 3, '2026-10-12'),
+  ])
+  assert.equal(buildSummary([ana], [timeline('t1')], today).counts.activePatients, 0)
+  assert.equal(patientProgress(ana, today).next, null)
 })
 
 test("a patient's overdue count agrees with the dashboard's overdue list", () => {

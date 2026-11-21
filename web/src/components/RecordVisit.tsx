@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
 import StatusBadge from './StatusBadge.tsx'
-import { recordActual, statusWords, toISO, visitStatus, windowWords } from '../lib/schedule.ts'
+import { isBooked, recordActual, statusWords, toISO, visitStatus, windowWords } from '../lib/schedule.ts'
 import { useStore } from '../lib/store.ts'
 import type { Patient, Visit } from '../lib/types.ts'
 import { buttonClass, inputClass, labelClass, secondaryButtonClass } from '../lib/ui.ts'
@@ -24,14 +24,11 @@ export default function RecordVisit({ patient, visit, onCancel, onSaved }: Props
   const today = toISO(new Date())
   const preview = recordActual(visit, date || null)
   const previewStatus = visitStatus(preview)
+  const previewBooked = isBooked(preview, today)
   const previewWords = date ? windowWords(preview, today) : ''
 
   async function handleSave(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (date > today) {
-      setError('That date is in the future. Attendance is recorded once the visit has happened.')
-      return
-    }
     const updated = recordActual(visit, date || null)
     if (note.trim()) updated.note = note.trim()
     else delete updated.note
@@ -53,7 +50,6 @@ export default function RecordVisit({ patient, visit, onCancel, onSaved }: Props
           <input
             className={inputClass}
             type="date"
-            max={today}
             value={date}
             onChange={(event) => setDate(event.target.value)}
           />
@@ -66,10 +62,11 @@ export default function RecordVisit({ patient, visit, onCancel, onSaved }: Props
         </button>
       </div>
       <p className="flex items-baseline gap-1.5 text-sm text-slate-700">
-        <StatusBadge status={previewStatus} />
+        <StatusBadge status={previewStatus} booked={previewBooked} />
         <span>
           {statusWords(previewStatus)}
           {previewWords && ` · ${previewWords}`}
+          {previewBooked && ' · booked'}
         </span>
       </p>
       <label className="block space-y-1">
